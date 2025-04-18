@@ -190,7 +190,7 @@ REGISTRO ler_dado_csv(FILE *arquivo){
     reg.targetIndustry = dado_buffer_em_str(buffer, &pos, &reg.tmnTargetIndustry);
     reg.defenseMechanism = dado_buffer_em_str(buffer, &pos, &reg.tmnDefenseMechanism);
     
-    // Inicia registrador como não removido
+    // Inicia registro como não removido
     reg.removido = '0';
     reg.prox = -1;
 
