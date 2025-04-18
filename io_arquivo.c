@@ -163,7 +163,7 @@ void update_header(FILE *arquivo, HEADER header){
     if (ftell(arquivo) != 0){
         fseek(arquivo, 0, SEEK_SET);
     }
-    // Escreve os daods que podem ter mudado no header
+    // Escreve os dados que podem ter mudado no header
     fwrite(&header.status, sizeof(char), 1, arquivo);
     fwrite(&header.topo, sizeof(int long), 1, arquivo);
     fwrite(&header.proxByteOffset, sizeof(int long), 1, arquivo);
