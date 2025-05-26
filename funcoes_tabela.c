@@ -154,6 +154,7 @@ void busca_condicional(FILE *arquivo, REGISTRO reg_modelo){
         print_registro(reg, header);
         desaloca_struct_registro(reg);
         encontrou = 1;
+        if (reg_modelo.idAttack != -1) break; // idAttack é único -> não precisa mais continuar a busca
     }
     
     // Se não encontrar nenhum registro com as condições, imprime "Registro inexistente"

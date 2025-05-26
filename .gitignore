@@ -1,2 +1,7 @@
 .vscode/
 ext/
+*.csv
+programaTab
+*.o
+*.out
+*.bin
