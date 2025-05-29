@@ -27,6 +27,8 @@ int main(){
         // Verifica se os dois arquivos estão corretos
         if (arquivo_binario == NULL || arquivo_csv == NULL){ 
             printf("Falha no processamento do arquivo.\n");
+            if (arquivo_binario != NULL) fclose(arquivo_binario);
+            if (arquivo_csv != NULL) fclose(arquivo_csv);
             break;
         }
         
@@ -69,59 +71,8 @@ int main(){
         }
         // Loop que realiza as buscas
         for (int i = 0; i < n; i++){
-            int m; // Variável que armazena o número de condições na busca
-            REGISTRO reg_modelo; // Cria um registro modelo que define as condições
-            // Inicializa os campos do registro modelo
-            reg_modelo.attackType = NULL;
-            reg_modelo.country = NULL;
-            reg_modelo.targetIndustry = NULL;
-            reg_modelo.defenseMechanism = NULL;
-            reg_modelo.idAttack = -1;
-            reg_modelo.financialLoss = -1;
-            reg_modelo.year = -1;
-            reg_modelo.tmnCountry = 0;
-            reg_modelo.tmnAttackType = 0;
-            reg_modelo.tmnTargetIndustry = 0;
-            reg_modelo.tmnDefenseMechanism = 0;
-
-            scanf("%d", &m); // Le o valor de m
-            
-            // Loop para definir as condições da busca
-            for (int j = 0; j < m; j++){
-                char nome_campo[25]; // Armazena o valor do campo em que será definido a condição
-                scanf(" %s", nome_campo);
-                // Armazena no campo especificado qual é a condição
-                if (!strcmp(nome_campo, "idAttack")){
-                    scanf("%d", &reg_modelo.idAttack);
-                }
-                else if (!strcmp(nome_campo, "year")){
-                    scanf("%d", &reg_modelo.year);
-                }
-                else if (!strcmp(nome_campo, "financialLoss")){
-                    scanf("%f", &reg_modelo.financialLoss);
-                }
-                else if (!strcmp(nome_campo, "country")){
-                    reg_modelo.country = malloc(sizeof(char) * 100);
-                    reg_modelo.tmnCountry = 100;
-                    scan_quote_string(reg_modelo.country);
-                }
-                else if (!strcmp(nome_campo, "attackType")){
-                    reg_modelo.attackType = malloc(sizeof(char) * 100);
-                    reg_modelo.tmnAttackType = 100;
-                    scan_quote_string(reg_modelo.attackType);
-                }
-                else if (!strcmp(nome_campo, "targetIndustry")){
-                    reg_modelo.targetIndustry = malloc(sizeof(char) * 100);
-                    reg_modelo.tmnTargetIndustry = 100;
-                    scan_quote_string(reg_modelo.targetIndustry);
-                }
-                else if (!strcmp(nome_campo, "defenseMechanism")){
-                    reg_modelo.defenseMechanism = malloc(sizeof(char) * 100);
-                    reg_modelo.tmnDefenseMechanism = 100;
-                    scan_quote_string(reg_modelo.defenseMechanism);
-                }
-
-            }
+            // Cria um registro modelo que define as condições
+            REGISTRO reg_modelo = cria_modelo(); 
             // Chama a função para busca condicional  
             busca_condicional(arquivo_binario, reg_modelo);
             // Desaloca o registro modelo

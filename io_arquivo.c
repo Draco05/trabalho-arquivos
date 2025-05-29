@@ -334,3 +334,18 @@ REGISTRO ler_registro(FILE *arquivo, HEADER header){
     // Retorna o registro lido
     return reg;
 }
+
+void remove_registro(FILE *arquivo, HEADER *header){
+    long int posicao_registro = ftell(arquivo);
+    int tamanho;
+    char removido = '1';
+    // escreve que foi removido
+    fwrite(&removido, sizeof(char), 1, arquivo);
+    fread(&tamanho, sizeof(int), 1, arquivo);
+    // guarda a posição do topo como próxima na lista de removidos
+    fwrite(&(header->topo), sizeof(long int), 1, arquivo);
+    // seek para o proximo registro
+    fseek(arquivo, tamanho - sizeof(long int), SEEK_CUR);
+    // atualiza o topo
+    header->topo = posicao_registro;
+}

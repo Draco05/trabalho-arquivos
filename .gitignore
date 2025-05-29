@@ -5,3 +5,7 @@ programaTab
 *.o
 *.out
 *.bin
+*.zip
+casos/
+*sh
+*.txt
