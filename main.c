@@ -8,12 +8,11 @@
 #include "funcao_fornecida.h"
 
 int main(){
-    int modo;
+    int modo, n;
     scanf("%d", &modo); // Lê a funcionalidade que será executada
     char nome_csv[25], nome_binario[25]; // Variáveis para armazenar o nome dos arquivos
     FILE *arquivo_csv, *arquivo_binario; // Ponteiros para os arquivos
     HEADER header;
-    REGISTRO reg;
     // Switch case para executar a funcionalidade especificada 
     switch (modo){
     // criar arquivo da tabela
@@ -61,7 +60,6 @@ int main(){
 
     // selecionar dados da tabela com condição
     case 3:
-        int n; // Variável que armazena o número de buscas a serem realizadas
         scanf(" %s %d", nome_binario, &n); // Le o número de buscas
         arquivo_binario = fopen(nome_binario, "rb");
         // Verifica se o arquivo está correto
@@ -69,17 +67,42 @@ int main(){
             printf("Falha no processamento do arquivo.\n");
             break;
         }
+        header = ler_header(arquivo_binario);
         // Loop que realiza as buscas
         for (int i = 0; i < n; i++){
             // Cria um registro modelo que define as condições
             REGISTRO reg_modelo = cria_modelo(); 
             // Chama a função para busca condicional  
-            busca_condicional(arquivo_binario, reg_modelo);
+            busca_condicional(arquivo_binario, reg_modelo, &header, IMPRIMIR);
             // Desaloca o registro modelo
             desaloca_struct_registro(reg_modelo);
         }
         // Fecha o arquivo
         fclose(arquivo_binario);
+        break;
+    
+    // Deletar registros
+    case 4:
+        scanf(" %s %d", nome_binario, &n); // Le o número de buscas
+        arquivo_binario = fopen(nome_binario, "rb+");
+        // Verifica se o arquivo está correto
+        if (arquivo_binario == NULL){
+            printf("Falha no processamento do arquivo.\n");
+            break;
+        }
+        header = ler_header(arquivo_binario);
+        //o status no arquivo é 0, mas na struct é 1
+        header.status = '0';
+        update_header(arquivo_binario, header);
+        header.status = '1'; 
+        for (int i = 0; i < n; i++){
+            REGISTRO reg_modelo = cria_modelo();
+            busca_condicional(arquivo_binario, reg_modelo, &header, DELETAR);
+            desaloca_struct_registro(reg_modelo);
+        }
+        update_header(arquivo_binario, header);
+        fclose(arquivo_binario);
+        binarioNaTela(nome_binario);
         break;
     // funcionalidade inexistente
     default:

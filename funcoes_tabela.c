@@ -5,6 +5,7 @@
 #include "io_arquivo.h"
 #include "estrutura_arquivo.h"
 
+
 // funções privadas
 int compara_registros(REGISTRO *reg, REGISTRO *reg_modelo);
 
@@ -38,38 +39,39 @@ void criar_tabela(FILE *arquivo_csv, FILE *arquivo_binario){
 /// Função para printar um registro
 // Argumentos: registro a ser printado e o header do arquivo
 // Função que imprime um registro
-void print_registro(REGISTRO reg, HEADER header){
+void print_registro(REGISTRO reg, HEADER *header){
     // Se for removido não printa
     // Verifica se o registro está removido
     if (reg.removido == '1'){ 
+        // printf("REMOVIDO\nPROXIMO: %ld\n\n", reg.prox); //debug
         return;
     }
 
 
     // Se não estiver removido, imprime o registro
-    printf("%.23s: %d\n", header.descreveIdentificador, reg.idAttack);
+    printf("%.23s: %d\n", header->descreveIdentificador, reg.idAttack);
     
-    printf("%.27s: ", header.descreveYear);
+    printf("%.27s: ", header->descreveYear);
     if (reg.year == -1) printf("NADA CONSTA\n");
     else printf("%d\n", reg.year);
 
-    printf("%.26s: ", header.descreveCountry);
+    printf("%.26s: ", header->descreveCountry);
     if (reg.tmnCountry == 0) printf("NADA CONSTA\n");
     else printf("%s\n", reg.country);
 
-    printf("%.38s: ", header.descreveTargetIndustry);
+    printf("%.38s: ", header->descreveTargetIndustry);
     if (reg.tmnTargetIndustry == 0 ) printf("NADA CONSTA\n");
     else printf("%s\n", reg.targetIndustry);
 
-    printf("%.38s: ", header.descreveType);
+    printf("%.38s: ", header->descreveType);
     if (reg.tmnAttackType == 0) printf("NADA CONSTA\n");
     else printf("%s\n", reg.attackType);
 
-    printf("%.28s: ", header.descreveFinancialLoss);
+    printf("%.28s: ", header->descreveFinancialLoss);
     if (reg.financialLoss == -1) printf("NADA CONSTA\n");
     else printf("%.2f\n", reg.financialLoss);
 
-    printf("%.67s: ", header.descreveDefense);
+    printf("%.67s: ", header->descreveDefense);
     if (reg.tmnDefenseMechanism == 0) printf("NADA CONSTA\n");
     else printf("%s\n", reg.defenseMechanism);
     
@@ -91,27 +93,32 @@ void busca_simples(FILE *arquivo){
         printf("Registro inexistente.\n");
         return;
     }
+
+    // printf("TOPO: %ld\n\n", header.topo); //debug
+
     // Loop para ler e imprimir
-    for (int i = 0; i < header.nroRegArq; i++){
-        reg = ler_registro(arquivo, header);
-        print_registro(reg, header);
+    for (int i = 0; i < header.nroRegArq + header.nroRegRem; i++){
+        // printf("Posição: %ld\n", ftell(arquivo)); //debug
+        reg = ler_registro(arquivo, &header);
+        print_registro(reg, &header);
         desaloca_struct_registro(reg);
     }
 }
 
 // Função que busca e imprime todos os registros que atendam a uma certa condição
 // Argumentos: o arquivo binario e um registro modelo para comparação
-void busca_condicional(FILE *arquivo, REGISTRO reg_modelo){ 
+void busca_condicional(FILE *arquivo, REGISTRO reg_modelo, HEADER *header, int modo){ 
     REGISTRO reg;
-    HEADER header = ler_header(arquivo);
     int encontrou = 0;
     // Verifica a consistência do arquivo
-    if (header.status == '0'){
+    if (header->status == '0'){
         printf("Falha no processamento do arquivo.\n"); 
         return;
     }
+    fseek(arquivo, 276, SEEK_SET); // pular para o inicio dos registros de dados
+    if (modo == DELETAR) header->status = '0';
     // Loop que compara os registros do arquivo com o registro modelo
-    for (int i = 0; i < header.nroRegArq; i++){
+    for (int i = 0; i < header->nroRegArq + header->nroRegRem; i++){
         reg = ler_registro(arquivo, header);
         // Checa se o registro foi removido
         if (reg.removido == '1'){
@@ -119,9 +126,13 @@ void busca_condicional(FILE *arquivo, REGISTRO reg_modelo){
             continue;
         }
         
-        // Se atender às especificações, imprime o registro
+        // Se atender às especificações, faz o que o modo especificar com o registro
         if (compara_registros(&reg,&reg_modelo)){
-            print_registro(reg, header);
+            if (modo == IMPRIMIR) print_registro(reg, header);
+            else if (modo == DELETAR){
+                fseek(arquivo, -reg.tamanhoRegistro - 5, SEEK_CUR);
+                remove_registro(arquivo, header);
+            }
             encontrou = 1;
             if (reg_modelo.idAttack != -1) { // idAttack é único -> não precisa mais continuar a busca
                 desaloca_struct_registro(reg);
@@ -131,11 +142,14 @@ void busca_condicional(FILE *arquivo, REGISTRO reg_modelo){
         desaloca_struct_registro(reg);
     }
     
-    // Se não encontrar nenhum registro com as condições, imprime "Registro inexistente"
-    if (!encontrou){
-        printf("Registro inexistente.\n\n");
+    if (modo == IMPRIMIR){
+        // Se não encontrar nenhum registro com as condições, imprime "Registro inexistente"
+        if (!encontrou){
+            printf("Registro inexistente.\n\n");
+        }
+        printf("**********\n");
     }
-    printf("**********\n");
+    header->status = '1';
 }
 
 REGISTRO cria_modelo(){

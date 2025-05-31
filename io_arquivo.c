@@ -10,7 +10,7 @@
 int tamanho_str_dado(char *string, int index_inicial){
     int i = index_inicial;
     // incrementa o tamanho enquanto não achar um simbolo de "fim do dado"
-    while (string[i] != ',' && string[i] != '\0' && string[i] != '|') i++;
+    while (string[i] != ',' && string[i] != '\0' && string[i] != '|' && string[i] != '$') i++;
     return i - index_inicial;
 }
 
@@ -169,6 +169,7 @@ void update_header(FILE *arquivo, HEADER header){
     fwrite(&header.proxByteOffset, sizeof(int long), 1, arquivo);
     fwrite(&header.nroRegArq, sizeof(int), 1, arquivo);
     fwrite(&header.nroRegRem, sizeof(int), 1, arquivo);
+    fseek(arquivo, 276, SEEK_SET);
 }
 
 // Le apenas um dado do arquivo .csv e transforma isso em um registro
@@ -244,7 +245,7 @@ void desaloca_struct_registro(REGISTRO reg){
 
 // Função que lê um registro do arquivo
 // Argumentos: arquivo binário e header
-REGISTRO ler_registro(FILE *arquivo, HEADER header){
+REGISTRO ler_registro(FILE *arquivo, HEADER *header){
     REGISTRO reg;
     // Lendo os dados estáticos do registro
     fread(&reg.removido, sizeof(char), 1, arquivo);
@@ -272,7 +273,7 @@ REGISTRO ler_registro(FILE *arquivo, HEADER header){
     while (deslocamento < reg.tamanhoRegistro - 20){
         char codigo = buffer[deslocamento]; // codigo do campo
         // Checa qual campo o código pertence
-        if (codigo == header.codDescreveCountry){
+        if (codigo == header->codDescreveCountry){
             // Descobre o tamanho do campo
             reg.tmnCountry = tamanho_str_dado(buffer, deslocamento + 1);
             if (reg.tmnCountry){
@@ -286,7 +287,7 @@ REGISTRO ler_registro(FILE *arquivo, HEADER header){
             // desloca para o próximo campo
             deslocamento += reg.tmnCountry + 2;
         }
-        else if (codigo == header.codDescreveType){
+        else if (codigo == header->codDescreveType){
             // Descobre o tamanho do campo
             reg.tmnAttackType = tamanho_str_dado(buffer, deslocamento + 1);
             if (reg.tmnAttackType){
@@ -300,7 +301,7 @@ REGISTRO ler_registro(FILE *arquivo, HEADER header){
             // desloca para o próximo campo
             deslocamento += reg.tmnAttackType + 2;
         }
-        else if (codigo == header.codDescreveTargeIndustry){
+        else if (codigo == header->codDescreveTargeIndustry){
             // Descobre o tamanho do campo
             reg.tmnTargetIndustry = tamanho_str_dado(buffer, deslocamento + 1);
             if (reg.tmnTargetIndustry){
@@ -314,7 +315,7 @@ REGISTRO ler_registro(FILE *arquivo, HEADER header){
             // desloca para o próximo campo
             deslocamento +=  reg.tmnTargetIndustry + 2;
         }
-        else if (codigo == header.codDescreveDefense){
+        else if (codigo == header->codDescreveDefense){
             // Descobre o tamanho do campo
             reg.tmnDefenseMechanism = tamanho_str_dado(buffer, deslocamento + 1);
             if (reg.tmnDefenseMechanism){
@@ -328,6 +329,7 @@ REGISTRO ler_registro(FILE *arquivo, HEADER header){
             // desloca para o próximo campo
             deslocamento += reg.tmnDefenseMechanism + 2;
         }
+        else if(codigo == '$') break;
     }
     // Desaloca a memória alocada no buffer
     free(buffer);
@@ -348,4 +350,6 @@ void remove_registro(FILE *arquivo, HEADER *header){
     fseek(arquivo, tamanho - sizeof(long int), SEEK_CUR);
     // atualiza o topo
     header->topo = posicao_registro;
+    header->nroRegArq--;
+    header->nroRegRem++;
 }

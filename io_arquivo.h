@@ -8,7 +8,7 @@
     REGISTRO ler_dado_csv(FILE *arquivo);
     void escreve_registro(FILE *arquivo, REGISTRO reg, HEADER header);
     HEADER ler_header(FILE *arquivo);
-    REGISTRO ler_registro(FILE *arquivo, HEADER header);
+    REGISTRO ler_registro(FILE *arquivo, HEADER *header);
     void desaloca_struct_registro(REGISTRO reg);
     void update_header(FILE *arquivo, HEADER header);
     void remove_registro(FILE *arquivo, HEADER *header);
