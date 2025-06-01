@@ -11,5 +11,5 @@
     REGISTRO ler_registro(FILE *arquivo, HEADER *header);
     void desaloca_struct_registro(REGISTRO reg);
     void update_header(FILE *arquivo, HEADER header);
-    void remove_registro(FILE *arquivo, HEADER *header);
+    void remocao_logica(FILE *arquivo, HEADER *header);
 #endif

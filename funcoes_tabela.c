@@ -8,6 +8,7 @@
 
 // funções privadas
 int compara_registros(REGISTRO *reg, REGISTRO *reg_modelo);
+long int percorre_lista(FILE *arquivo, int *tamanho, HEADER *header);
 
 // Função CREATE TABLE
 // Argumetos: Ponteiro dos arquivos csv e binário
@@ -107,16 +108,16 @@ void busca_simples(FILE *arquivo){
 
 // Função que busca e imprime todos os registros que atendam a uma certa condição
 // Argumentos: o arquivo binario e um registro modelo para comparação
-void busca_condicional(FILE *arquivo, REGISTRO reg_modelo, HEADER *header, int modo){ 
+int busca_condicional(FILE *arquivo, REGISTRO reg_modelo, HEADER *header, int modo){ 
     REGISTRO reg;
     int encontrou = 0;
     // Verifica a consistência do arquivo
     if (header->status == '0'){
         printf("Falha no processamento do arquivo.\n"); 
-        return;
+        return 0;
     }
-    fseek(arquivo, 276, SEEK_SET); // pular para o inicio dos registros de dados
     if (modo == DELETAR) header->status = '0';
+    fseek(arquivo, 276, SEEK_SET); // pular para o inicio dos registros de dados
     // Loop que compara os registros do arquivo com o registro modelo
     for (int i = 0; i < header->nroRegArq + header->nroRegRem; i++){
         reg = ler_registro(arquivo, header);
@@ -127,11 +128,11 @@ void busca_condicional(FILE *arquivo, REGISTRO reg_modelo, HEADER *header, int m
         }
         
         // Se atender às especificações, faz o que o modo especificar com o registro
-        if (compara_registros(&reg,&reg_modelo)){
+        if (compara_registros(&reg, &reg_modelo)){
             if (modo == IMPRIMIR) print_registro(reg, header);
             else if (modo == DELETAR){
                 fseek(arquivo, -reg.tamanhoRegistro - 5, SEEK_CUR);
-                remove_registro(arquivo, header);
+                remocao_logica(arquivo, header);
             }
             encontrou = 1;
             if (reg_modelo.idAttack != -1) { // idAttack é único -> não precisa mais continuar a busca
@@ -150,10 +151,10 @@ void busca_condicional(FILE *arquivo, REGISTRO reg_modelo, HEADER *header, int m
         printf("**********\n");
     }
     header->status = '1';
+    return 1;
 }
 
-REGISTRO cria_modelo(){
-    int m;
+REGISTRO cria_modelo(int modo){
     // Inicializa os campos do registro modelo
     REGISTRO reg_modelo;
     reg_modelo.attackType = NULL;
@@ -167,46 +168,123 @@ REGISTRO cria_modelo(){
     reg_modelo.tmnAttackType = 0;
     reg_modelo.tmnTargetIndustry = 0;
     reg_modelo.tmnDefenseMechanism = 0;
+    reg_modelo.removido = '0';
+    reg_modelo.prox = -1;
 
-    scanf("%d", &m); // Le o valor de m
-            
-    // Loop para definir as condições da busca
-    for (int j = 0; j < m; j++){
-        char nome_campo[25]; // Armazena o valor do campo em que será definido a condição
-        scanf(" %s", nome_campo);
-        // Armazena no campo especificado qual é a condição
-        if (!strcmp(nome_campo, "idAttack")){
-            scanf("%d", &reg_modelo.idAttack);
-        }
-        else if (!strcmp(nome_campo, "year")){
-            scanf("%d", &reg_modelo.year);
-        }
-        else if (!strcmp(nome_campo, "financialLoss")){
-            scanf("%f", &reg_modelo.financialLoss);
-        }
-        else if (!strcmp(nome_campo, "country")){
-            reg_modelo.country = malloc(sizeof(char) * 100);
-            reg_modelo.tmnCountry = 100;
-            scan_quote_string(reg_modelo.country);
-        }
-        else if (!strcmp(nome_campo, "attackType")){
-            reg_modelo.attackType = malloc(sizeof(char) * 100);
-            reg_modelo.tmnAttackType = 100;
-            scan_quote_string(reg_modelo.attackType);
-        }
-        else if (!strcmp(nome_campo, "targetIndustry")){
-            reg_modelo.targetIndustry = malloc(sizeof(char) * 100);
-            reg_modelo.tmnTargetIndustry = 100;
-            scan_quote_string(reg_modelo.targetIndustry);
-        }
-        else if (!strcmp(nome_campo, "defenseMechanism")){
-            reg_modelo.defenseMechanism = malloc(sizeof(char) * 100);
-            reg_modelo.tmnDefenseMechanism = 100;
-            scan_quote_string(reg_modelo.defenseMechanism);
-        }
+    if (modo == CAMPOS){
+        int m;
+        scanf("%d", &m); // Le o valor de m
+        // Loop para definir as condições da busca
+        for (int j = 0; j < m; j++){
+            char nome_campo[25]; // Armazena o valor do campo em que será definido a condição
+            scanf(" %s", nome_campo);
+            // Armazena no campo especificado qual é a condição
+            if (!strcmp(nome_campo, "idAttack")){
+                scanf("%d", &(reg_modelo.idAttack));
+            }
+            else if (!strcmp(nome_campo, "year")){
+                scanf("%d", &(reg_modelo.year));
+            }
+            else if (!strcmp(nome_campo, "financialLoss")){
+                scanf("%f", &(reg_modelo.financialLoss));
+            }
+            else if (!strcmp(nome_campo, "country")){
+                reg_modelo.country = malloc(sizeof(char) * 100);
+                reg_modelo.tmnCountry = 100;
+                scan_quote_string(reg_modelo.country);
+            }
+            else if (!strcmp(nome_campo, "attackType")){
+                reg_modelo.attackType = malloc(sizeof(char) * 100);
+                reg_modelo.tmnAttackType = 100;
+                scan_quote_string(reg_modelo.attackType);
+            }
+            else if (!strcmp(nome_campo, "targetIndustry")){
+                reg_modelo.targetIndustry = malloc(sizeof(char) * 100);
+                reg_modelo.tmnTargetIndustry = 100;
+                scan_quote_string(reg_modelo.targetIndustry);
+            }
+            else if (!strcmp(nome_campo, "defenseMechanism")){
+                reg_modelo.defenseMechanism = malloc(sizeof(char) * 100);
+                reg_modelo.tmnDefenseMechanism = 100;
+                scan_quote_string(reg_modelo.defenseMechanism);
+            }
 
+        }
     }
+    else if (modo == COMPLETO){
+        char *string = calloc(50, sizeof(char));
+        int tamanho;
+        //leitura idAttack
+        scanf("%d", &reg_modelo.idAttack);
+        //leitura year
+        scan_quote_string(string);
+        tamanho = strlen(string);
+        reg_modelo.year = tamanho ? atoi(string) : -1;
+        for (int j = 0; j < tamanho; j++) string[j] = '\0';
+        //leitura financialLoss
+        scan_quote_string(string);
+        tamanho = strlen(string);
+        reg_modelo.financialLoss = tamanho ? atof(string) : -1.0f;
+        for (int j = 0; j < tamanho; j++) string[j] = '\0';
+        tamanho = 0;
+        // leitura country
+        scan_quote_string(string);
+        reg_modelo.tmnCountry = strlen(string);
+        if (reg_modelo.tmnCountry){
+            reg_modelo.country = malloc(sizeof(char) * reg_modelo.tmnCountry);
+            strcpy(reg_modelo.country, string);
+            tamanho += reg_modelo.tmnCountry + 2;
+        }
+        else reg_modelo.country = NULL;
+        for (int j = 0; j < reg_modelo.tmnCountry; j++) string[j] = '\0';
+        // leitura attackType
+        scan_quote_string(string);
+        reg_modelo.tmnAttackType = strlen(string);
+        if (reg_modelo.tmnAttackType){
+            reg_modelo.attackType = malloc(sizeof(char) * reg_modelo.tmnAttackType);
+            strcpy(reg_modelo.attackType, string);
+            tamanho += reg_modelo.tmnAttackType + 2;
+        }
+        else reg_modelo.attackType = NULL;
+        for (int j = 0; j < reg_modelo.tmnAttackType; j++) string[j] = '\0';
+        // leitura targetIndustry
+        scan_quote_string(string);
+        reg_modelo.tmnTargetIndustry = strlen(string);
+        if (reg_modelo.tmnTargetIndustry){
+            reg_modelo.targetIndustry = malloc(sizeof(char) * reg_modelo.tmnTargetIndustry);
+            strcpy(reg_modelo.targetIndustry, string);
+            tamanho += reg_modelo.tmnTargetIndustry + 2;
+        }
+        else reg_modelo.targetIndustry = NULL;
+        for (int j = 0; j < reg_modelo.tmnTargetIndustry; j++) string[j] = '\0';
+        // leitura defenseMechanism
+        scan_quote_string(string);
+        reg_modelo.tmnDefenseMechanism = strlen(string);
+        if (reg_modelo.tmnDefenseMechanism){
+            reg_modelo.defenseMechanism = malloc(sizeof(char) * reg_modelo.tmnDefenseMechanism);
+            strcpy(reg_modelo.defenseMechanism, string);
+            tamanho += reg_modelo.tmnDefenseMechanism + 2;
+        }
+        else reg_modelo.defenseMechanism = NULL;
+        reg_modelo.tamanhoRegistro = tamanho + 20;
+        free(string);
+    }
+    
     return reg_modelo;
+}
+
+int inserir_registro(FILE *arquivo, REGISTRO *registro, HEADER *header){
+    if (header->status == '0'){
+        printf("Falha no processamento do arquivo.\n"); 
+        return 0;
+    }
+    header->status = '0';
+    long int posicao = percorre_lista(arquivo, &(registro->tamanhoRegistro), header);
+    fseek(arquivo, posicao, SEEK_SET);
+    escreve_registro(arquivo, *registro, *header);
+    header->status = '1';
+    header->nroRegArq++;
+    return 1;
 }
 
 int compara_registros(REGISTRO *reg, REGISTRO *reg_modelo){
@@ -225,4 +303,32 @@ int compara_registros(REGISTRO *reg, REGISTRO *reg_modelo){
         // Checa se o tipo de busca é de DefenseMechanism e, se sim, se o valor é diferente do a ser buscado
         if (reg_modelo->defenseMechanism != NULL && (!reg->tmnDefenseMechanism || strcmp(reg_modelo->defenseMechanism, reg->defenseMechanism))) return 0;
         return 1;
+}
+
+long int percorre_lista(FILE *arquivo, int *tamanho, HEADER *header){
+    long int posicao_anterior = -1;
+    long int posicao = header->topo;
+    while (posicao != -1){
+        fseek(arquivo, posicao, SEEK_SET);
+        REGISTRO reg = ler_registro(arquivo, header);
+        if (reg.tamanhoRegistro >= *tamanho) {
+            *tamanho = reg.tamanhoRegistro;
+            header->nroRegRem--;
+            if (posicao_anterior != -1){
+                fseek(arquivo, posicao_anterior + 5, SEEK_SET);
+                fwrite(&reg.prox, sizeof(long int), 1, arquivo);
+            }
+            else header->topo = reg.prox;
+            desaloca_struct_registro(reg);
+            break;
+        }
+        posicao_anterior = posicao;
+        posicao = reg.prox;
+        desaloca_struct_registro(reg);
+    }
+    if (posicao == -1){
+        posicao = header->proxByteOffset;
+        header->proxByteOffset += *tamanho + 5; 
+    }
+    return posicao;
 }

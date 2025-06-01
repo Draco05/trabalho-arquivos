@@ -71,7 +71,7 @@ int main(){
         // Loop que realiza as buscas
         for (int i = 0; i < n; i++){
             // Cria um registro modelo que define as condições
-            REGISTRO reg_modelo = cria_modelo(); 
+            REGISTRO reg_modelo = cria_modelo(CAMPOS); 
             // Chama a função para busca condicional  
             busca_condicional(arquivo_binario, reg_modelo, &header, IMPRIMIR);
             // Desaloca o registro modelo
@@ -96,16 +96,49 @@ int main(){
         update_header(arquivo_binario, header);
         header.status = '1'; 
         for (int i = 0; i < n; i++){
-            REGISTRO reg_modelo = cria_modelo();
-            busca_condicional(arquivo_binario, reg_modelo, &header, DELETAR);
+            REGISTRO reg_modelo = cria_modelo(CAMPOS);
+            if (!busca_condicional(arquivo_binario, reg_modelo, &header, DELETAR)){
+                desaloca_struct_registro(reg_modelo);
+                fclose(arquivo_binario);
+                return 0;
+            }
             desaloca_struct_registro(reg_modelo);
         }
         update_header(arquivo_binario, header);
         fclose(arquivo_binario);
         binarioNaTela(nome_binario);
         break;
+    case 5:
+        scanf(" %s %d", nome_binario, &n); // Le o número de inserções
+        arquivo_binario = fopen(nome_binario, "rb+");
+        // Verifica se o arquivo está correto
+        if (arquivo_binario == NULL){
+            printf("Falha no processamento do arquivo.\n");
+            break;
+        }
+        header = ler_header(arquivo_binario);
+        //o status no arquivo é 0, mas na struct é 1
+        header.status = '0';
+        update_header(arquivo_binario, header);
+        header.status = '1'; 
+        for (int i = 0; i < n; i++){
+            REGISTRO registro = cria_modelo(COMPLETO);
+            if (!inserir_registro(arquivo_binario, &registro, &header)){
+                fclose(arquivo_binario);
+                desaloca_struct_registro(registro);
+                return 0;
+            }
+            desaloca_struct_registro(registro);
+        }
+        update_header(arquivo_binario, header);
+        fclose(arquivo_binario);
+        binarioNaTela(nome_binario);
+        break;
+
     // funcionalidade inexistente
     default:
+        scanf("%s", nome_binario);
+        binarioNaTela(nome_binario);
         printf("Funcionalidade %d inexistente!", modo);
     }
     return 0;

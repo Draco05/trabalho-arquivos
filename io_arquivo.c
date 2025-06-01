@@ -104,6 +104,18 @@ void escreve_registro(FILE *arquivo, REGISTRO reg, HEADER header){
         fwrite(reg.defenseMechanism, sizeof(char), reg.tmnDefenseMechanism, arquivo);
         fwrite("|", sizeof(char), 1, arquivo);
     }
+    int tamanho_dinamico = 0;
+    // O (+2) representa o código do campo e o delimitador
+    if (reg.tmnCountry) tamanho_dinamico += reg.tmnCountry + 2;
+    if (reg.tmnAttackType) tamanho_dinamico += reg.tmnAttackType + 2;
+    if (reg.tmnTargetIndustry) tamanho_dinamico += reg.tmnTargetIndustry + 2;
+    if (reg.tmnDefenseMechanism) tamanho_dinamico += reg.tmnDefenseMechanism + 2; 
+    // escrever lixo no espaço não utilizado
+    for (int i = tamanho_dinamico; i < reg.tamanhoRegistro - 20; i++){
+        char lixo = '$';
+        fwrite(&lixo, sizeof(char), 1, arquivo);
+    }
+
 }
 // Le a a primeira linha do arquivo .csv, retornando um header inicial
 // Argumentos: arquivo csv
@@ -337,7 +349,7 @@ REGISTRO ler_registro(FILE *arquivo, HEADER *header){
     return reg;
 }
 
-void remove_registro(FILE *arquivo, HEADER *header){
+void remocao_logica(FILE *arquivo, HEADER *header){
     long int posicao_registro = ftell(arquivo);
     int tamanho;
     char removido = '1';
