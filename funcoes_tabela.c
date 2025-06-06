@@ -211,10 +211,10 @@ REGISTRO cria_modelo(int modo){
             reg_modelo.idAttack = atoi(valor_campo);
         }
         else if ((modo == CAMPOS && !strcmp(nome_campo, "year")) || (modo == COMPLETO && j == 1)){
-            reg_modelo.year = tamanho ? atoi(valor_campo) : VALOR_MODELO_NULO;
+            reg_modelo.year = tamanho ? atoi(valor_campo) : (modo==CAMPOS ? VALOR_MODELO_NULO : -1);
         }
         else if ((modo == CAMPOS && !strcmp(nome_campo, "financialLoss")) || (modo == COMPLETO && j == 2)){
-            reg_modelo.financialLoss = tamanho ? atof(valor_campo) : ((float) VALOR_MODELO_NULO);
+            reg_modelo.financialLoss = tamanho ? atof(valor_campo) : (modo==CAMPOS ? ((float) VALOR_MODELO_NULO) : -1.0f);
         }
         else if ((modo == CAMPOS && !strcmp(nome_campo, "country")) || (modo == COMPLETO && j == 3)){
             reg_modelo.tmnCountry = tamanho;
@@ -224,7 +224,7 @@ REGISTRO cria_modelo(int modo){
                 reg_modelo.tamanhoRegistro += tamanho + 2;
             }
             else {
-                reg_modelo.tmnCountry = VALOR_MODELO_NULO;
+                reg_modelo.tmnCountry = modo == CAMPOS ? VALOR_MODELO_NULO : 0;
                 reg_modelo.country = NULL;
             }
         }
@@ -236,7 +236,7 @@ REGISTRO cria_modelo(int modo){
                 reg_modelo.tamanhoRegistro += tamanho + 2;
             }
             else{
-                reg_modelo.tmnAttackType = VALOR_MODELO_NULO;
+                reg_modelo.tmnAttackType = modo == CAMPOS ? VALOR_MODELO_NULO : 0;
                 reg_modelo.attackType = NULL;
             }
         }
@@ -248,7 +248,7 @@ REGISTRO cria_modelo(int modo){
                 reg_modelo.tamanhoRegistro += tamanho + 2;
             }
             else{
-                reg_modelo.tmnTargetIndustry = VALOR_MODELO_NULO;
+                reg_modelo.tmnTargetIndustry = modo == CAMPOS ? VALOR_MODELO_NULO : 0;
                 reg_modelo.targetIndustry = NULL;
             }
         }
@@ -260,7 +260,7 @@ REGISTRO cria_modelo(int modo){
                 reg_modelo.tamanhoRegistro += tamanho + 2;
             }
             else {
-                reg_modelo.tmnDefenseMechanism = VALOR_MODELO_NULO;
+                reg_modelo.tmnDefenseMechanism = modo == CAMPOS ? VALOR_MODELO_NULO : 0;
                 reg_modelo.defenseMechanism = NULL;
             }
         }
