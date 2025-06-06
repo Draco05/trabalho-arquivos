@@ -68,11 +68,17 @@ int main(){
             break;
         }
         header = ler_header(arquivo_binario);
+        // checa consistência do arquivo
+        if (header.status == '0'){
+            printf("Falha no processamento do arquivo.\n");
+            fclose(arquivo_binario);
+            break;
+        }
         // Loop que realiza as buscas
         for (int i = 0; i < n; i++){
             // Cria um registro modelo que define as condições
             REGISTRO reg_modelo = cria_modelo(CAMPOS); 
-            // Chama a função para busca condicional  
+            // Chama a função para busca condicional no modo de imprimir 
             busca_condicional(arquivo_binario, reg_modelo, &header, IMPRIMIR);
             // Desaloca o registro modelo
             desaloca_struct_registro(reg_modelo);
@@ -91,12 +97,21 @@ int main(){
             break;
         }
         header = ler_header(arquivo_binario);
-        //o status no arquivo é 0, mas na struct é 1
+        // checa consistência do arquivo
+        if (header.status == '0'){
+            printf("Falha no processamento do arquivo.\n");
+            fclose(arquivo_binario);
+            break;
+        }
+        //atualiza o status no arquivo, mas mantém como 1 na struct
         header.status = '0';
         update_header(arquivo_binario, header);
         header.status = '1'; 
+
+        // Loop que realiza as buscas
         for (int i = 0; i < n; i++){
             REGISTRO reg_modelo = cria_modelo(CAMPOS);
+            // busca e deleta os registros. Caso ocorra erro, termina o programa
             if (!busca_condicional(arquivo_binario, reg_modelo, &header, DELETAR)){
                 desaloca_struct_registro(reg_modelo);
                 fclose(arquivo_binario);
@@ -104,10 +119,13 @@ int main(){
             }
             desaloca_struct_registro(reg_modelo);
         }
+        // atualiza os valores do header no arquivo
         update_header(arquivo_binario, header);
         fclose(arquivo_binario);
         binarioNaTela(nome_binario);
         break;
+
+    // Inserir Registros
     case 5:
         scanf(" %s %d", nome_binario, &n); // Le o número de inserções
         arquivo_binario = fopen(nome_binario, "rb+");
@@ -117,12 +135,21 @@ int main(){
             break;
         }
         header = ler_header(arquivo_binario);
-        //o status no arquivo é 0, mas na struct é 1
+        // checa consistência do arquivo
+        if (header.status == '0'){
+            printf("Falha no processamento do arquivo.\n");
+            fclose(arquivo_binario);
+            break;
+        }
+        //atualiza o stauts no arquivo, mas mantém como 1 na struct
         header.status = '0';
         update_header(arquivo_binario, header);
         header.status = '1'; 
+
+        // Loop das inserções
         for (int i = 0; i < n; i++){
             REGISTRO registro = cria_modelo(COMPLETO);
+            // Insere o registro especificado. Caso ocorra erro, termina o programa
             if (!inserir_registro(arquivo_binario, &registro, &header)){
                 fclose(arquivo_binario);
                 desaloca_struct_registro(registro);
@@ -130,15 +157,51 @@ int main(){
             }
             desaloca_struct_registro(registro);
         }
+        // atualiza os valores do header no arquivo
         update_header(arquivo_binario, header);
         fclose(arquivo_binario);
         binarioNaTela(nome_binario);
         break;
+    
+    // Atualizar registros
+    case 6:
+        scanf(" %s %d", nome_binario, &n); // Le o número de inserções
+        arquivo_binario = fopen(nome_binario, "rb+");
+        // Verifica se o arquivo está correto
+        if (arquivo_binario == NULL){
+            printf("Falha no processamento do arquivo.\n");
+            break;
+        }
+        header = ler_header(arquivo_binario);
+        // checa consistência do arquivo
+        if (header.status == '0'){
+            printf("Falha no processamento do arquivo.\n");
+            fclose(arquivo_binario);
+            break;
+        }
+        //atualiza o status no arquivo, mas mantém como 1 na struct
+        header.status = '0';
+        update_header(arquivo_binario, header);
+        header.status = '1';
 
+        // Loop para realizar as buscas
+        for (int i = 0; i < n; i++){
+            REGISTRO registro = cria_modelo(CAMPOS);
+            // Atualiza registro especificado. Caso ocorra erros, fim do programa.
+            if (!busca_condicional(arquivo_binario, registro, &header, UPDATE)){
+                desaloca_struct_registro(registro);
+                fclose(arquivo_binario);
+                return 0;
+            }
+            desaloca_struct_registro(registro);
+        }
+        // atualiza valores do header no arquivo
+        update_header(arquivo_binario, header);
+        fclose(arquivo_binario);
+        binarioNaTela(nome_binario);
+        break;
     // funcionalidade inexistente
     default:
-        scanf("%s", nome_binario);
-        binarioNaTela(nome_binario);
         printf("Funcionalidade %d inexistente!", modo);
     }
     return 0;

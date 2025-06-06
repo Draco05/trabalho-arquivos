@@ -349,6 +349,8 @@ REGISTRO ler_registro(FILE *arquivo, HEADER *header){
     return reg;
 }
 
+// Função que remove logicamente o registro da posição atual no arquivo
+// Argumentos: arquivo binário a ser manipulado, header do arquivo
 void remocao_logica(FILE *arquivo, HEADER *header){
     long int posicao_registro = ftell(arquivo);
     int tamanho;
@@ -360,7 +362,7 @@ void remocao_logica(FILE *arquivo, HEADER *header){
     fwrite(&(header->topo), sizeof(long int), 1, arquivo);
     // seek para o proximo registro
     fseek(arquivo, tamanho - sizeof(long int), SEEK_CUR);
-    // atualiza o topo
+    // atualiza o header
     header->topo = posicao_registro;
     header->nroRegArq--;
     header->nroRegRem++;

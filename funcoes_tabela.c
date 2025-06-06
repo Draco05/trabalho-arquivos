@@ -4,11 +4,13 @@
 #include "funcoes_tabela.h"
 #include "io_arquivo.h"
 #include "estrutura_arquivo.h"
-
+// valor usado para checar se o campo do modelo foi passado como NULO 
+#define VALOR_MODELO_NULO -2 
 
 // funções privadas
 int compara_registros(REGISTRO *reg, REGISTRO *reg_modelo);
-long int percorre_lista(FILE *arquivo, int *tamanho, HEADER *header);
+long int posicao_da_insercao(FILE *arquivo, int *tamanho, HEADER *header);
+void update_registro(FILE *arquivo, REGISTRO *reg, REGISTRO *reg_template, HEADER *header);
 
 // Função CREATE TABLE
 // Argumetos: Ponteiro dos arquivos csv e binário
@@ -106,17 +108,21 @@ void busca_simples(FILE *arquivo){
     }
 }
 
-// Função que busca e imprime todos os registros que atendam a uma certa condição
-// Argumentos: o arquivo binario e um registro modelo para comparação
+// Função que busca todos os registros que atendam a uma certa condição e realiza a operação indicada pelo modo
+// Argumentos: o arquivo binario, um registro modelo para comparação, o header, modo/operação realizada com os registros encontrados
+// Retorno: 0 caso ocorra algum erro, 1 caso esteja tudo certo
 int busca_condicional(FILE *arquivo, REGISTRO reg_modelo, HEADER *header, int modo){ 
-    REGISTRO reg;
+    REGISTRO reg, novo_reg;
     int encontrou = 0;
     // Verifica a consistência do arquivo
     if (header->status == '0'){
         printf("Falha no processamento do arquivo.\n"); 
         return 0;
     }
-    if (modo == DELETAR) header->status = '0';
+    // altera status na struct nos modos que escrevem no arquivo
+    if (modo == DELETAR || modo == UPDATE) header->status = '0';
+    // no modo update, cria o modelo do registro a ser atualizado
+    if (modo == UPDATE) novo_reg = cria_modelo(CAMPOS);
     fseek(arquivo, 276, SEEK_SET); // pular para o inicio dos registros de dados
     // Loop que compara os registros do arquivo com o registro modelo
     for (int i = 0; i < header->nroRegArq + header->nroRegRem; i++){
@@ -129,11 +135,16 @@ int busca_condicional(FILE *arquivo, REGISTRO reg_modelo, HEADER *header, int mo
         
         // Se atender às especificações, faz o que o modo especificar com o registro
         if (compara_registros(&reg, &reg_modelo)){
-            if (modo == IMPRIMIR) print_registro(reg, header);
-            else if (modo == DELETAR){
+            if (modo == IMPRIMIR) print_registro(reg, header); // imprime no modo imprimir
+            else if (modo == DELETAR){ // remoção lógica no modo deletar
                 fseek(arquivo, -reg.tamanhoRegistro - 5, SEEK_CUR);
                 remocao_logica(arquivo, header);
             }
+            else if(modo == UPDATE){ // atualiza com os valores do novo_reg o registro atual
+                fseek(arquivo, -reg.tamanhoRegistro - 5, SEEK_CUR);
+                update_registro(arquivo, &reg, &novo_reg, header);
+            }
+            // indica que encontrou um registro na busca
             encontrou = 1;
             if (reg_modelo.idAttack != -1) { // idAttack é único -> não precisa mais continuar a busca
                 desaloca_struct_registro(reg);
@@ -142,7 +153,10 @@ int busca_condicional(FILE *arquivo, REGISTRO reg_modelo, HEADER *header, int mo
         }
         desaloca_struct_registro(reg);
     }
-    
+    if (modo == UPDATE){
+        desaloca_struct_registro(novo_reg);
+    }
+
     if (modo == IMPRIMIR){
         // Se não encontrar nenhum registro com as condições, imprime "Registro inexistente"
         if (!encontrou){
@@ -150,10 +164,15 @@ int busca_condicional(FILE *arquivo, REGISTRO reg_modelo, HEADER *header, int mo
         }
         printf("**********\n");
     }
-    header->status = '1';
+    header->status = '1'; // atualiza o status na struct
     return 1;
 }
 
+// Função que cria um modelo de registro a partir de entradas do usuário
+// Argumento: o modo em que a entrada do usuário será feita:
+//  -CAMPOS: m NomeCampo1 ValorCampo1 ... NomeCampom ValorCampom
+//  -COMPLETO: idAttack year finantialLoss country attackType targetIndustry defenseMechanism
+// Retorno: registro com os parâmetros passados pelo usuário
 REGISTRO cria_modelo(int modo){
     // Inicializa os campos do registro modelo
     REGISTRO reg_modelo;
@@ -170,123 +189,111 @@ REGISTRO cria_modelo(int modo){
     reg_modelo.tmnDefenseMechanism = 0;
     reg_modelo.removido = '0';
     reg_modelo.prox = -1;
+    reg_modelo.tamanhoRegistro = 20;
 
-    if (modo == CAMPOS){
-        int m;
-        scanf("%d", &m); // Le o valor de m
-        // Loop para definir as condições da busca
-        for (int j = 0; j < m; j++){
-            char nome_campo[25]; // Armazena o valor do campo em que será definido a condição
-            scanf(" %s", nome_campo);
-            // Armazena no campo especificado qual é a condição
-            if (!strcmp(nome_campo, "idAttack")){
-                scanf("%d", &(reg_modelo.idAttack));
-            }
-            else if (!strcmp(nome_campo, "year")){
-                scanf("%d", &(reg_modelo.year));
-            }
-            else if (!strcmp(nome_campo, "financialLoss")){
-                scanf("%f", &(reg_modelo.financialLoss));
-            }
-            else if (!strcmp(nome_campo, "country")){
-                reg_modelo.country = malloc(sizeof(char) * 100);
-                reg_modelo.tmnCountry = 100;
-                scan_quote_string(reg_modelo.country);
-            }
-            else if (!strcmp(nome_campo, "attackType")){
-                reg_modelo.attackType = malloc(sizeof(char) * 100);
-                reg_modelo.tmnAttackType = 100;
-                scan_quote_string(reg_modelo.attackType);
-            }
-            else if (!strcmp(nome_campo, "targetIndustry")){
-                reg_modelo.targetIndustry = malloc(sizeof(char) * 100);
-                reg_modelo.tmnTargetIndustry = 100;
-                scan_quote_string(reg_modelo.targetIndustry);
-            }
-            else if (!strcmp(nome_campo, "defenseMechanism")){
-                reg_modelo.defenseMechanism = malloc(sizeof(char) * 100);
-                reg_modelo.tmnDefenseMechanism = 100;
-                scan_quote_string(reg_modelo.defenseMechanism);
-            }
+    int m;
+    char valor_campo[100]; // Armazena o valor do campo temporariamente
+    char nome_campo[25]; // Armazena o nome do campo
+    // Inicia o valor de m dependendo do modo
+    if (modo == CAMPOS) scanf("%d", &m);
+    else if (modo == COMPLETO) m = 7;
 
-        }
-    }
-    else if (modo == COMPLETO){
-        char *string = calloc(50, sizeof(char));
+    // Loop para ler os valores do registro
+    for (int j = 0; j < m; j++){
         int tamanho;
-        //leitura idAttack
-        scanf("%d", &reg_modelo.idAttack);
-        //leitura year
-        scan_quote_string(string);
-        tamanho = strlen(string);
-        reg_modelo.year = tamanho ? atoi(string) : -1;
-        for (int j = 0; j < tamanho; j++) string[j] = '\0';
-        //leitura financialLoss
-        scan_quote_string(string);
-        tamanho = strlen(string);
-        reg_modelo.financialLoss = tamanho ? atof(string) : -1.0f;
-        for (int j = 0; j < tamanho; j++) string[j] = '\0';
-        tamanho = 0;
-        // leitura country
-        scan_quote_string(string);
-        reg_modelo.tmnCountry = strlen(string);
-        if (reg_modelo.tmnCountry){
-            reg_modelo.country = malloc(sizeof(char) * reg_modelo.tmnCountry);
-            strcpy(reg_modelo.country, string);
-            tamanho += reg_modelo.tmnCountry + 2;
+        memset(nome_campo, '\0', 25);
+        memset(valor_campo, '\0', 100);
+        if (modo == CAMPOS) scanf(" %s", nome_campo);
+        scan_quote_string(valor_campo);
+        tamanho = strlen(valor_campo);
+
+        if ((modo == CAMPOS && !strcmp(nome_campo, "idAttack")) || (modo == COMPLETO && j == 0)){
+            reg_modelo.idAttack = atoi(valor_campo);
         }
-        else reg_modelo.country = NULL;
-        for (int j = 0; j < reg_modelo.tmnCountry; j++) string[j] = '\0';
-        // leitura attackType
-        scan_quote_string(string);
-        reg_modelo.tmnAttackType = strlen(string);
-        if (reg_modelo.tmnAttackType){
-            reg_modelo.attackType = malloc(sizeof(char) * reg_modelo.tmnAttackType);
-            strcpy(reg_modelo.attackType, string);
-            tamanho += reg_modelo.tmnAttackType + 2;
+        else if ((modo == CAMPOS && !strcmp(nome_campo, "year")) || (modo == COMPLETO && j == 1)){
+            reg_modelo.year = tamanho ? atoi(valor_campo) : VALOR_MODELO_NULO;
         }
-        else reg_modelo.attackType = NULL;
-        for (int j = 0; j < reg_modelo.tmnAttackType; j++) string[j] = '\0';
-        // leitura targetIndustry
-        scan_quote_string(string);
-        reg_modelo.tmnTargetIndustry = strlen(string);
-        if (reg_modelo.tmnTargetIndustry){
-            reg_modelo.targetIndustry = malloc(sizeof(char) * reg_modelo.tmnTargetIndustry);
-            strcpy(reg_modelo.targetIndustry, string);
-            tamanho += reg_modelo.tmnTargetIndustry + 2;
+        else if ((modo == CAMPOS && !strcmp(nome_campo, "financialLoss")) || (modo == COMPLETO && j == 2)){
+            reg_modelo.financialLoss = tamanho ? atof(valor_campo) : ((float) VALOR_MODELO_NULO);
         }
-        else reg_modelo.targetIndustry = NULL;
-        for (int j = 0; j < reg_modelo.tmnTargetIndustry; j++) string[j] = '\0';
-        // leitura defenseMechanism
-        scan_quote_string(string);
-        reg_modelo.tmnDefenseMechanism = strlen(string);
-        if (reg_modelo.tmnDefenseMechanism){
-            reg_modelo.defenseMechanism = malloc(sizeof(char) * reg_modelo.tmnDefenseMechanism);
-            strcpy(reg_modelo.defenseMechanism, string);
-            tamanho += reg_modelo.tmnDefenseMechanism + 2;
+        else if ((modo == CAMPOS && !strcmp(nome_campo, "country")) || (modo == COMPLETO && j == 3)){
+            reg_modelo.tmnCountry = tamanho;
+            if (tamanho) {
+                reg_modelo.country = malloc(sizeof(char) * tamanho);
+                strcpy(reg_modelo.country, valor_campo);
+                reg_modelo.tamanhoRegistro += tamanho + 2;
+            }
+            else {
+                reg_modelo.tmnCountry = VALOR_MODELO_NULO;
+                reg_modelo.country = NULL;
+            }
         }
-        else reg_modelo.defenseMechanism = NULL;
-        reg_modelo.tamanhoRegistro = tamanho + 20;
-        free(string);
+        else if ((modo == CAMPOS && !strcmp(nome_campo, "attackType")) || (modo == COMPLETO && j == 4)){
+            reg_modelo.tmnAttackType = tamanho;
+            if (tamanho) {
+                reg_modelo.attackType = malloc(sizeof(char) * tamanho);
+                strcpy(reg_modelo.attackType, valor_campo);
+                reg_modelo.tamanhoRegistro += tamanho + 2;
+            }
+            else{
+                reg_modelo.tmnAttackType = VALOR_MODELO_NULO;
+                reg_modelo.attackType = NULL;
+            }
+        }
+        else if ((modo == CAMPOS && !strcmp(nome_campo, "targetIndustry")) || (modo == COMPLETO && j == 5)){
+            reg_modelo.tmnTargetIndustry = tamanho;
+            if (tamanho) {
+                reg_modelo.targetIndustry = malloc(sizeof(char) * tamanho);
+                strcpy(reg_modelo.targetIndustry, valor_campo);
+                reg_modelo.tamanhoRegistro += tamanho + 2;
+            }
+            else{
+                reg_modelo.tmnTargetIndustry = VALOR_MODELO_NULO;
+                reg_modelo.targetIndustry = NULL;
+            }
+        }
+        else if ((modo == CAMPOS && !strcmp(nome_campo, "defenseMechanism")) || (modo == COMPLETO && j == 6)){
+            reg_modelo.tmnDefenseMechanism = tamanho;
+            if (tamanho) {
+                reg_modelo.defenseMechanism = malloc(sizeof(char) * tamanho);
+                strcpy(reg_modelo.defenseMechanism, valor_campo);
+                reg_modelo.tamanhoRegistro += tamanho + 2;
+            }
+            else {
+                reg_modelo.tmnDefenseMechanism = VALOR_MODELO_NULO;
+                reg_modelo.defenseMechanism = NULL;
+            }
+        }
     }
-    
     return reg_modelo;
 }
 
+// Função que insere registro no arquivo de dados
+// Argumentos: Arquivo binário a ser manipulado, registro a ser inserido, header do arquivo
+// Retorno: 0 caso ocorra algum erro, 1 caso esteja tudo certo
 int inserir_registro(FILE *arquivo, REGISTRO *registro, HEADER *header){
+    // checa consistência do arquivo
     if (header->status == '0'){
         printf("Falha no processamento do arquivo.\n"); 
         return 0;
     }
+    // atualiza o status da struct
     header->status = '0';
-    long int posicao = percorre_lista(arquivo, &(registro->tamanhoRegistro), header);
+
+    // descobre a posição em que o dado será inserido e o escreve nessa posição
+    long int posicao = posicao_da_insercao(arquivo, &(registro->tamanhoRegistro), header);
     fseek(arquivo, posicao, SEEK_SET);
     escreve_registro(arquivo, *registro, *header);
+    
+    // atualiza a struct header
     header->status = '1';
     header->nroRegArq++;
     return 1;
 }
 
+// Função que compara dois registros
+// Argumentos: registros a serem comparados
+// Retorno: 0 caso sejam diferentes, 1 caso sejam iguais
 int compara_registros(REGISTRO *reg, REGISTRO *reg_modelo){
     // Checa se o tipo de busca é de ID e, se sim, se o valor é diferente do a ser buscado
         if (reg_modelo->idAttack != -1 && reg_modelo->idAttack != reg->idAttack) return 0;
@@ -305,30 +312,120 @@ int compara_registros(REGISTRO *reg, REGISTRO *reg_modelo){
         return 1;
 }
 
-long int percorre_lista(FILE *arquivo, int *tamanho, HEADER *header){
-    long int posicao_anterior = -1;
-    long int posicao = header->topo;
+
+// Função que descobre a posição em que um registro deve ser inserido
+// Argumentos: arquivo binário, tamanho do registro a ser inserido, header do arquivo
+// Retorno: posição em que o registro deve ser inserido
+long int posicao_da_insercao(FILE *arquivo, int *tamanho, HEADER *header){
+    long int posicao_anterior = -1; // posição do registro anterior na lista de removidos
+    long int posicao = header->topo; // posição atual do registro na lista de removidos
+    // Checar até o fim da lista de removidos
     while (posicao != -1){
+        // Colocar o ponteiro na posição do registro atual da lista
         fseek(arquivo, posicao, SEEK_SET);
         REGISTRO reg = ler_registro(arquivo, header);
+        // checar se é possível inserir na posição atual
         if (reg.tamanhoRegistro >= *tamanho) {
+            // guarda o tamanho do maior registro na struct
             *tamanho = reg.tamanhoRegistro;
             header->nroRegRem--;
+            // checa se está no meio da lista
             if (posicao_anterior != -1){
+                // atualiza o próximo do registro anterior
                 fseek(arquivo, posicao_anterior + 5, SEEK_SET);
                 fwrite(&reg.prox, sizeof(long int), 1, arquivo);
             }
-            else header->topo = reg.prox;
+            else header->topo = reg.prox; // caso a posição indicada seja a que está no topo (header)
             desaloca_struct_registro(reg);
             break;
         }
+        // atualiza a posição
         posicao_anterior = posicao;
         posicao = reg.prox;
         desaloca_struct_registro(reg);
     }
+    // caso não foi possível reaproveitar um espaço removido, inserir no fim do arquivo
     if (posicao == -1){
         posicao = header->proxByteOffset;
         header->proxByteOffset += *tamanho + 5; 
     }
     return posicao;
+}
+
+// Função de atualizar o valor de um registro
+// Argumentos: arquivo binário a ser manipulao, registro original, registro com os valores com update, header
+void update_registro(FILE *arquivo, REGISTRO *reg, REGISTRO *reg_template, HEADER *header){
+
+    // cria uma struct do registro com os valores atualizados
+    REGISTRO reg_novo;
+    reg_novo.removido = '0';
+    reg_novo.prox = -1;
+    reg_novo.tamanhoRegistro = 20;
+    
+    // para cada IF, é checado se o valor no template é:
+    //  -1: indica que esse campo não será atualizado
+    //  VALOR_MODELO_NULO: indica que esse campo será atualizado para nulo
+    //  outo valor: indica que esse campo será atualizado para esse novo valor
+
+    if (reg_template->idAttack != -1) reg_novo.idAttack = reg_template->idAttack;
+    else reg_novo.idAttack = reg->idAttack;
+    if (reg_template->year != -1) {
+        reg_novo.year = (reg_template->year == VALOR_MODELO_NULO) ? -1 : reg_template->year;
+    }
+    else reg_novo.year = reg->year;
+    if (reg_template->financialLoss != -1){
+        reg_novo.financialLoss = (reg_template->financialLoss == ((float) VALOR_MODELO_NULO)) ? -1.0f : reg_template->financialLoss;
+    }
+    else reg_novo.financialLoss = reg->financialLoss;
+    if (reg_template->tmnCountry){
+        reg_novo.country = reg_template->country;
+        reg_novo.tmnCountry = (reg_template->tmnCountry == VALOR_MODELO_NULO) ? 0 : reg_template->tmnCountry;
+    }
+    else {
+        reg_novo.country = reg->country;
+        reg_novo.tmnCountry = reg->tmnCountry;
+    }
+    if (reg_template->tmnAttackType){
+        reg_novo.attackType = reg_template->attackType;
+        reg_novo.tmnAttackType = (reg_template->tmnAttackType == VALOR_MODELO_NULO) ? 0 : reg_template->tmnAttackType;
+
+    }
+    else {
+        reg_novo.attackType = reg->attackType;
+        reg_novo.tmnAttackType = reg->tmnAttackType;
+    }
+    if (reg_template->tmnTargetIndustry){
+        reg_novo.targetIndustry = reg_template->targetIndustry;
+        reg_novo.tmnTargetIndustry = (reg_template->tmnTargetIndustry == VALOR_MODELO_NULO) ? 0 : reg_template->tmnTargetIndustry;
+    }
+    else {
+        reg_novo.targetIndustry = reg->targetIndustry;
+        reg_novo.tmnTargetIndustry = reg->tmnTargetIndustry;
+    }
+    if (reg_template->tmnDefenseMechanism){
+        reg_novo.defenseMechanism = reg_template->defenseMechanism;
+        reg_novo.tmnDefenseMechanism = (reg_template->tmnDefenseMechanism == VALOR_MODELO_NULO) ? 0 : reg_template->tmnDefenseMechanism;
+    }
+    else {
+        reg_novo.defenseMechanism = reg->defenseMechanism;
+        reg_novo.tmnDefenseMechanism = reg->tmnDefenseMechanism;
+    }
+
+    // calcula o tamanho do registro após os updates
+    if (reg_novo.tmnCountry) reg_novo.tamanhoRegistro += reg_novo.tmnCountry + 2;
+    if (reg_novo.tmnAttackType) reg_novo.tamanhoRegistro += reg_novo.tmnAttackType + 2;
+    if (reg_novo.tmnTargetIndustry) reg_novo.tamanhoRegistro += reg_novo.tmnTargetIndustry + 2;
+    if (reg_novo.tmnDefenseMechanism) reg_novo.tamanhoRegistro += reg_novo.tmnDefenseMechanism + 2;
+
+    // checa se pode reutilizar o mesmo espaço do registro original
+    if (reg_novo.tamanhoRegistro <= reg->tamanhoRegistro){
+        reg_novo.tamanhoRegistro = reg->tamanhoRegistro;
+        escreve_registro(arquivo, reg_novo, *header);
+    }
+    else{
+        // remove registro original e adiciona o novo
+        header->status = '1';
+        remocao_logica(arquivo, header);
+        inserir_registro(arquivo, &reg_novo, header);
+    } 
 }

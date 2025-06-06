@@ -3,6 +3,7 @@
     #define FUNCOES_TABELA
     #define IMPRIMIR 0
     #define DELETAR 1
+    #define UPDATE 2
     #define CAMPOS 0 
     #define COMPLETO 1
     #include <stdio.h>
