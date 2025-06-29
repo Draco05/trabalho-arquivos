@@ -1,5 +1,6 @@
 #ifndef TABELA
     #define TABELA
+    #define ORDEM_ARVORE 3
     // Struct do header
     typedef struct{
         char status;
@@ -38,4 +39,24 @@
         int tmnTargetIndustry;
         int tmnDefenseMechanism;
     } REGISTRO;
+
+    // Struct do header da Árvore B
+    typedef struct{
+        char status;
+        int noRaiz;
+        int proxRRN;
+        int nroNos;
+        char lixo[31];
+    } HEADER_ARVORE;
+
+    // Struct de um nó / página da Árvore B    
+    typedef struct{
+        int tipoNo;
+        int nroChaves;
+        // Os vetores tem 1 a mais de tamanho para facilitar os casos de split
+        int ponteirosNos[ORDEM_ARVORE + 1];
+        int chaves[ORDEM_ARVORE];
+        long int byteOffsets[ORDEM_ARVORE];
+    } NO_ARVORE;
+    
 #endif

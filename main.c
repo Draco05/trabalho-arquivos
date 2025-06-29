@@ -6,12 +6,13 @@
 #include "estrutura_arquivo.h"
 #include "io_arquivo.h"
 #include "funcao_fornecida.h"
+#include "funcoes_arvore_b.h"
 
 int main(){
     int modo, n;
     scanf("%d", &modo); // Lê a funcionalidade que será executada
-    char nome_csv[25], nome_binario[25]; // Variáveis para armazenar o nome dos arquivos
-    FILE *arquivo_csv, *arquivo_binario; // Ponteiros para os arquivos
+    char nome_csv[30], nome_binario[30], nome_indice[30]; // Variáveis para armazenar o nome dos arquivos
+    FILE *arquivo_csv, *arquivo_binario, *arquivo_indice; // Ponteiros para os arquivos
     HEADER header;
     // Switch case para executar a funcionalidade especificada 
     switch (modo){
@@ -200,6 +201,22 @@ int main(){
         fclose(arquivo_binario);
         binarioNaTela(nome_binario);
         break;
+    case 7:
+        scanf(" %s  %s", nome_binario, nome_indice);
+        arquivo_binario = fopen(nome_binario, "rb");
+        arquivo_indice = fopen(nome_indice, "wb+");
+        if (arquivo_binario == NULL || arquivo_indice == NULL){
+            printf("Falha no processamento do arquivo.\n");
+            if (arquivo_binario != NULL) fclose(arquivo_binario);
+            if (arquivo_indice != NULL) fclose(arquivo_csv);
+            break;
+        }
+        
+        criar_arvore(arquivo_binario, arquivo_indice);
+        fclose(arquivo_binario);
+        fclose(arquivo_indice);
+        binarioNaTela(nome_indice);
+        
     // funcionalidade inexistente
     default:
         printf("Funcionalidade %d inexistente!", modo);

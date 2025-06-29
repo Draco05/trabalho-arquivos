@@ -3,7 +3,7 @@ all:
 run:
 	./programaTab
 copy:
-	cp ./casos/pratico1/entrada/*.bin ./
+	cp ./casos/pratico2/entrada/*.bin ./
 clean:
 	rm *.bin programaTab arquivos.zip
 zip:
