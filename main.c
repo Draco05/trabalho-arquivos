@@ -14,6 +14,7 @@ int main(){
     char nome_csv[30], nome_binario[30], nome_indice[30]; // Variáveis para armazenar o nome dos arquivos
     FILE *arquivo_csv, *arquivo_binario, *arquivo_indice; // Ponteiros para os arquivos
     HEADER header;
+    HEADER_ARVORE header_indice;
     // Switch case para executar a funcionalidade especificada 
     switch (modo){
     // criar arquivo da tabela
@@ -212,11 +213,47 @@ int main(){
             break;
         }
         
-        criar_arvore(arquivo_binario, arquivo_indice);
+        if (criar_arvore(arquivo_binario, arquivo_indice) == 0){
+            printf("Falha no processamento do arquivo.\n");
+            fclose(arquivo_binario);
+            fclose(arquivo_indice);
+            break;
+        }
         fclose(arquivo_binario);
         fclose(arquivo_indice);
         binarioNaTela(nome_indice);
-        
+        break;
+
+    case 8:
+        scanf(" %s  %s %d", nome_binario, nome_indice, &n);
+        arquivo_binario = fopen(nome_binario, "rb");
+        arquivo_indice = fopen(nome_indice, "rb");
+
+        if (arquivo_binario == NULL || arquivo_indice == NULL){
+            printf("Falha no processamento do arquivo.\n");
+            if (arquivo_binario != NULL) fclose(arquivo_binario);
+            if (arquivo_indice != NULL) fclose(arquivo_csv);
+            break;
+        }
+        header = ler_header(arquivo_binario);
+        header_indice = ler_header_arvore(arquivo_indice);
+
+        if (header.status == '0' || header_indice.status == '0'){
+            printf("Falha no processamento do arquivo.\n");
+            fclose(arquivo_binario);
+            fclose(arquivo_csv);
+            break;
+        }
+        for (int i = 0; i < n; i++){
+            REGISTRO reg_modelo = cria_modelo(CAMPOS);
+            arvore_busca_condicional(arquivo_binario, arquivo_indice, reg_modelo, &header, &header_indice);
+            desaloca_struct_registro(reg_modelo);
+        }
+
+        fclose(arquivo_binario);
+        fclose(arquivo_indice);
+        break;
+
     // funcionalidade inexistente
     default:
         printf("Funcionalidade %d inexistente!", modo);

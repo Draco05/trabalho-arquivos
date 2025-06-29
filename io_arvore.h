@@ -5,6 +5,7 @@
     #include <string.h>
     #include "estrutura_arquivo.h"
     #include "io_arquivo.h"
+    HEADER_ARVORE ler_header_arvore(FILE *arquivo_arvore);
     void escreve_header_arvore(FILE *arquivo_arvore, HEADER_ARVORE *header_arvore);
     NO_ARVORE *ler_no(int rrn, FILE *arquivo_arvore);
     void escrever_no(NO_ARVORE *no, int rrn, FILE *arquivo_arvore);

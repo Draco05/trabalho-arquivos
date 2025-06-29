@@ -10,6 +10,7 @@
     #include <stdlib.h>
     #include "estrutura_arquivo.h"
     #include "funcao_fornecida.h"
+    int compara_registros(REGISTRO *reg, REGISTRO *reg_modelo);
     void criar_tabela(FILE *arquivo_csv, FILE *arquivo_binario);
     void print_registro(REGISTRO reg, HEADER *header);
     void busca_simples(FILE *arquivo);

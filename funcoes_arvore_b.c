@@ -1,4 +1,5 @@
 #include "funcoes_arvore_b.h"
+#include "funcoes_tabela.h"
 
 NO_ARVORE *criar_no(int tipo){
     NO_ARVORE *no = malloc(sizeof(NO_ARVORE));
@@ -12,8 +13,9 @@ NO_ARVORE *criar_no(int tipo){
     return no;
 }
 
-void criar_arvore(FILE *arquivo_entrada, FILE *arquivo_arvore){
+int criar_arvore(FILE *arquivo_entrada, FILE *arquivo_arvore){
     HEADER header = ler_header(arquivo_entrada);
+    if (header.status == '0') return 0;
     HEADER_ARVORE header_arvore;
     header_arvore.status = '0';
     header_arvore.noRaiz = -1;
@@ -31,6 +33,7 @@ void criar_arvore(FILE *arquivo_entrada, FILE *arquivo_arvore){
     }
     header_arvore.status = '1';
     escreve_header_arvore(arquivo_arvore, &header_arvore);
+    return 1;
 }
 
 int no_inserir(int *chave, long int *byteoffset, int rrn_esq, int rrn_dir, NO_ARVORE *no, HEADER_ARVORE *header, FILE *arquivo){
@@ -114,4 +117,44 @@ void arvore_adicionar_chave(int idAttack, long int byteoffset, HEADER_ARVORE *he
         (header->nroNos)++;
         free(no);
     }
+}
+
+void arvore_busca_condicional(FILE *arquivo_bin, FILE *arquivo_indice, REGISTRO reg_modelo, HEADER *header_bin, HEADER_ARVORE *header_indice){
+    // Busca não tem indice como parametro
+    if (reg_modelo.idAttack == -1){
+        busca_condicional(arquivo_bin, reg_modelo, header_bin, IMPRIMIR);
+        return;
+    }
+    NO_ARVORE *no;
+    int encontrou = 0;
+    int rrn = header_indice->noRaiz;
+
+    while (rrn != -1){
+        no = ler_no(rrn, arquivo_indice);
+
+        int index = 0;
+        while (index < no->nroChaves && reg_modelo.idAttack > no->chaves[index]) index++;
+
+        // encontrou o registro com mesmo idAttack
+        if (index < no->nroChaves && no->chaves[index] == reg_modelo.idAttack){
+            int byteoffset = no->byteOffsets[index];
+            fseek(arquivo_bin, byteoffset, SEEK_SET);
+            REGISTRO reg = ler_registro(arquivo_bin, header_bin);
+            if (compara_registros(&reg, &reg_modelo)){
+                print_registro(reg, header_bin);
+                encontrou = 1;
+            }
+            desaloca_struct_registro(reg);
+            free(no);
+            break;
+        }
+
+        rrn = no->ponteirosNos[index];
+        free(no);
+    }
+
+    if (!encontrou){
+        printf("Registro inexistente.\n\n");
+    }
+    printf("**********\n");
 }

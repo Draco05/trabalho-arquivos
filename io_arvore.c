@@ -1,5 +1,19 @@
 #include "io_arvore.h"
 
+HEADER_ARVORE ler_header_arvore(FILE *arquivo_arvore){
+    HEADER_ARVORE header_arvore;
+    if (ftell(arquivo_arvore) != 0){
+        fseek(arquivo_arvore, 0, SEEK_SET);
+    }
+    fread(&(header_arvore.status), sizeof(char), 1, arquivo_arvore);
+    fread(&(header_arvore.noRaiz), sizeof(int), 1, arquivo_arvore);
+    fread(&(header_arvore.proxRRN), sizeof(int), 1, arquivo_arvore);
+    fread(&(header_arvore.nroNos), sizeof(int), 1, arquivo_arvore);
+    fread(header_arvore.lixo, sizeof(char), 31, arquivo_arvore);
+
+    return header_arvore;
+}
+
 void escreve_header_arvore(FILE *arquivo_arvore, HEADER_ARVORE *header_arvore){
     if (ftell(arquivo_arvore) != 0){
         fseek(arquivo_arvore, 0, SEEK_SET);
