@@ -8,6 +8,43 @@
 #include "funcao_fornecida.h"
 #include "funcoes_arvore_b.h"
 
+int checar_arquivos(int quantidade_arquivos, FILE *arquivo1, FILE *arquivo2){
+    if (quantidade_arquivos == 1){
+        if (arquivo1 == NULL){
+            printf("Falha no processamento do arquivo.\n");
+            return 1;
+        }
+    }
+    else{
+        if (arquivo1 == NULL || arquivo2 == NULL){ 
+            printf("Falha no processamento do arquivo.\n");
+            if (arquivo1 != NULL) fclose(arquivo1);
+            if (arquivo2 != NULL) fclose(arquivo2);
+            return 1;
+        }
+    }
+    return 0;
+}
+
+int loop_busca(int n, int modo_operacao, int modo_modelo, FILE *arquivo_binario, HEADER *header){
+    for (int i = 0; i < n; i++){
+        REGISTRO reg_modelo = cria_modelo(modo_modelo);
+    
+        if (modo_operacao != INSERIR && !busca_condicional(arquivo_binario, reg_modelo, header, modo_operacao)){
+            desaloca_struct_registro(reg_modelo);
+            fclose(arquivo_binario);
+            return 1;
+        }
+        else if (modo_operacao == INSERIR && inserir_registro(arquivo_binario, &reg_modelo, header) == -1){
+            desaloca_struct_registro(reg_modelo);
+            fclose(arquivo_binario);
+            return 1;
+        }
+        desaloca_struct_registro(reg_modelo);
+    }
+    return 0;
+}
+
 int main(){
     int modo, n;
     scanf("%d", &modo); // Lê a funcionalidade que será executada
@@ -25,13 +62,7 @@ int main(){
         arquivo_csv = fopen(nome_csv, "r");
         arquivo_binario = fopen(nome_binario, "wb");
 
-        // Verifica se os dois arquivos estão corretos
-        if (arquivo_binario == NULL || arquivo_csv == NULL){ 
-            printf("Falha no processamento do arquivo.\n");
-            if (arquivo_binario != NULL) fclose(arquivo_binario);
-            if (arquivo_csv != NULL) fclose(arquivo_csv);
-            break;
-        }
+        if (checar_arquivos(2, arquivo_binario, arquivo_csv)) break;
         
         // Chama a função para criar a tabela
         criar_tabela(arquivo_csv, arquivo_binario);
@@ -48,11 +79,10 @@ int main(){
     case 2:
         scanf(" %s", nome_binario);
         arquivo_binario = fopen(nome_binario, "rb");
+
         // Verifica se o arquivo binário abriu corretamente
-        if (arquivo_binario == NULL){
-            printf("Falha no processamento do arquivo.\n");
-            break;
-        }
+        if (checar_arquivos(1, arquivo_binario, NULL)) break;
+
         // Chama a função para buscar e imprimir os registros do arquivo  
         busca_simples(arquivo_binario);
         // Fecha o arquivo
@@ -65,10 +95,8 @@ int main(){
         scanf(" %s %d", nome_binario, &n); // Le o número de buscas
         arquivo_binario = fopen(nome_binario, "rb");
         // Verifica se o arquivo está correto
-        if (arquivo_binario == NULL){
-            printf("Falha no processamento do arquivo.\n");
-            break;
-        }
+        if (checar_arquivos(1, arquivo_binario, NULL)) break;
+
         header = ler_header(arquivo_binario);
         // checa consistência do arquivo
         if (header.status == '0'){
@@ -77,14 +105,8 @@ int main(){
             break;
         }
         // Loop que realiza as buscas
-        for (int i = 0; i < n; i++){
-            // Cria um registro modelo que define as condições
-            REGISTRO reg_modelo = cria_modelo(CAMPOS); 
-            // Chama a função para busca condicional no modo de imprimir 
-            busca_condicional(arquivo_binario, reg_modelo, &header, IMPRIMIR);
-            // Desaloca o registro modelo
-            desaloca_struct_registro(reg_modelo);
-        }
+        if (loop_busca(n, IMPRIMIR, CAMPOS, arquivo_binario, &header)) break;
+
         // Fecha o arquivo
         fclose(arquivo_binario);
         break;
@@ -94,10 +116,8 @@ int main(){
         scanf(" %s %d", nome_binario, &n); // Le o número de buscas
         arquivo_binario = fopen(nome_binario, "rb+");
         // Verifica se o arquivo está correto
-        if (arquivo_binario == NULL){
-            printf("Falha no processamento do arquivo.\n");
-            break;
-        }
+        if (checar_arquivos(1, arquivo_binario, NULL)) break;
+
         header = ler_header(arquivo_binario);
         // checa consistência do arquivo
         if (header.status == '0'){
@@ -111,16 +131,8 @@ int main(){
         header.status = '1'; 
 
         // Loop que realiza as buscas
-        for (int i = 0; i < n; i++){
-            REGISTRO reg_modelo = cria_modelo(CAMPOS);
-            // busca e deleta os registros. Caso ocorra erro, termina o programa
-            if (!busca_condicional(arquivo_binario, reg_modelo, &header, DELETAR)){
-                desaloca_struct_registro(reg_modelo);
-                fclose(arquivo_binario);
-                return 0;
-            }
-            desaloca_struct_registro(reg_modelo);
-        }
+        if (loop_busca(n, DELETAR, CAMPOS, arquivo_binario, &header)) break;
+        
         // atualiza os valores do header no arquivo
         update_header(arquivo_binario, header);
         fclose(arquivo_binario);
@@ -132,10 +144,8 @@ int main(){
         scanf(" %s %d", nome_binario, &n); // Le o número de inserções
         arquivo_binario = fopen(nome_binario, "rb+");
         // Verifica se o arquivo está correto
-        if (arquivo_binario == NULL){
-            printf("Falha no processamento do arquivo.\n");
-            break;
-        }
+        if (checar_arquivos(1, arquivo_binario, NULL)) break;
+
         header = ler_header(arquivo_binario);
         // checa consistência do arquivo
         if (header.status == '0'){
@@ -149,16 +159,8 @@ int main(){
         header.status = '1'; 
 
         // Loop das inserções
-        for (int i = 0; i < n; i++){
-            REGISTRO registro = cria_modelo(COMPLETO);
-            // Insere o registro especificado. Caso ocorra erro, termina o programa
-            if (!inserir_registro(arquivo_binario, &registro, &header)){
-                fclose(arquivo_binario);
-                desaloca_struct_registro(registro);
-                return 0;
-            }
-            desaloca_struct_registro(registro);
-        }
+        if (loop_busca(n, INSERIR, COMPLETO, arquivo_binario, &header)) break;
+
         // atualiza os valores do header no arquivo
         update_header(arquivo_binario, header);
         fclose(arquivo_binario);
@@ -170,10 +172,8 @@ int main(){
         scanf(" %s %d", nome_binario, &n); // Le o número de inserções
         arquivo_binario = fopen(nome_binario, "rb+");
         // Verifica se o arquivo está correto
-        if (arquivo_binario == NULL){
-            printf("Falha no processamento do arquivo.\n");
-            break;
-        }
+        if (checar_arquivos(1, arquivo_binario, NULL)) break;
+
         header = ler_header(arquivo_binario);
         // checa consistência do arquivo
         if (header.status == '0'){
@@ -187,16 +187,8 @@ int main(){
         header.status = '1';
 
         // Loop para realizar as buscas
-        for (int i = 0; i < n; i++){
-            REGISTRO registro = cria_modelo(CAMPOS);
-            // Atualiza registro especificado. Caso ocorra erros, fim do programa.
-            if (!busca_condicional(arquivo_binario, registro, &header, UPDATE)){
-                desaloca_struct_registro(registro);
-                fclose(arquivo_binario);
-                return 0;
-            }
-            desaloca_struct_registro(registro);
-        }
+        if (loop_busca(n, UPDATE, CAMPOS, arquivo_binario, &header)) break;
+
         // atualiza valores do header no arquivo
         update_header(arquivo_binario, header);
         fclose(arquivo_binario);
@@ -206,12 +198,8 @@ int main(){
         scanf(" %s  %s", nome_binario, nome_indice);
         arquivo_binario = fopen(nome_binario, "rb");
         arquivo_indice = fopen(nome_indice, "wb+");
-        if (arquivo_binario == NULL || arquivo_indice == NULL){
-            printf("Falha no processamento do arquivo.\n");
-            if (arquivo_binario != NULL) fclose(arquivo_binario);
-            if (arquivo_indice != NULL) fclose(arquivo_csv);
-            break;
-        }
+
+        if (checar_arquivos(2, arquivo_binario, arquivo_indice)) break;
         
         if (criar_arvore(arquivo_binario, arquivo_indice) == 0){
             printf("Falha no processamento do arquivo.\n");
@@ -229,12 +217,8 @@ int main(){
         arquivo_binario = fopen(nome_binario, "rb");
         arquivo_indice = fopen(nome_indice, "rb");
 
-        if (arquivo_binario == NULL || arquivo_indice == NULL){
-            printf("Falha no processamento do arquivo.\n");
-            if (arquivo_binario != NULL) fclose(arquivo_binario);
-            if (arquivo_indice != NULL) fclose(arquivo_csv);
-            break;
-        }
+        if (checar_arquivos(2, arquivo_binario, arquivo_indice)) break;
+
         header = ler_header(arquivo_binario);
         header_indice = ler_header_arvore(arquivo_indice);
 
@@ -246,17 +230,93 @@ int main(){
         }
         for (int i = 0; i < n; i++){
             REGISTRO reg_modelo = cria_modelo(CAMPOS);
-            arvore_busca_condicional(arquivo_binario, arquivo_indice, reg_modelo, &header, &header_indice);
+            arvore_busca_condicional(arquivo_binario, arquivo_indice, reg_modelo, &header, &header_indice, IMPRIMIR);
             desaloca_struct_registro(reg_modelo);
         }
 
         fclose(arquivo_binario);
         fclose(arquivo_indice);
         break;
+    case 10:
+        scanf(" %s  %s %d", nome_binario, nome_indice, &n); // Le o número de inserções
+        arquivo_binario = fopen(nome_binario, "rb+");
+        arquivo_indice = fopen(nome_indice, "rb+");
+        // Verifica se o arquivo está correto
+        if (checar_arquivos(2, arquivo_binario, arquivo_indice)) break;
 
+        header = ler_header(arquivo_binario);
+        header_indice = ler_header_arvore(arquivo_indice);
+
+        if (header.status == '0' || header_indice.status == '0'){
+            printf("Falha no processamento do arquivo.\n");
+            fclose(arquivo_binario);
+            fclose(arquivo_csv);
+            break;
+        }
+
+        //atualiza o stauts no arquivo, mas mantém como 1 na struct
+        header.status = '0';
+        header_indice.status = '0';
+        update_header(arquivo_binario, header);
+        escreve_header_arvore(arquivo_indice, &header_indice);
+        header.status = '1'; 
+        header_indice.status = '1';
+
+        // Loop das inserções
+        for (int i = 0; i < n; i++){
+            REGISTRO registro = cria_modelo(COMPLETO);
+            long int byteoffset = inserir_registro(arquivo_binario, &registro, &header);
+            int chave = registro.idAttack;
+            // Insere o registro especificado. Caso ocorra erro, termina o programa
+            if (byteoffset == -1){
+                fclose(arquivo_binario);
+                desaloca_struct_registro(registro);
+                return 0;
+            }
+            arvore_adicionar_chave(chave, byteoffset, &header_indice, arquivo_indice);
+            desaloca_struct_registro(registro);
+        }
+        // atualiza os valores do header no arquivo
+        update_header(arquivo_binario, header);
+        escreve_header_arvore(arquivo_indice, &header_indice);
+        fclose(arquivo_binario);
+        fclose(arquivo_indice);
+        binarioNaTela(nome_binario);
+        binarioNaTela(nome_indice);
+        break;
+
+    case 11:
+        scanf(" %s  %s %d", nome_binario, nome_indice, &n);
+        arquivo_binario = fopen(nome_binario, "rb+");
+        arquivo_indice = fopen(nome_indice, "rb+");
+
+        if (checar_arquivos(2, arquivo_binario, arquivo_indice)) break;
+
+        header = ler_header(arquivo_binario);
+        header_indice = ler_header_arvore(arquivo_indice);
+
+        if (header.status == '0' || header_indice.status == '0'){
+            printf("Falha no processamento do arquivo.\n");
+            fclose(arquivo_binario);
+            fclose(arquivo_csv);
+            break;
+        }
+        for (int i = 0; i < n; i++){
+            REGISTRO reg_modelo = cria_modelo(CAMPOS);
+            arvore_busca_condicional(arquivo_binario, arquivo_indice, reg_modelo, &header, &header_indice, UPDATE);
+            desaloca_struct_registro(reg_modelo);
+        }
+        update_header(arquivo_binario, header);
+        escreve_header_arvore(arquivo_indice, &header_indice);
+        fclose(arquivo_binario);
+        fclose(arquivo_indice);
+        binarioNaTela(nome_binario);
+        binarioNaTela(nome_indice);
+        break;
+    
     // funcionalidade inexistente
     default:
-        printf("Funcionalidade %d inexistente!", modo);
+        printf("Funcionalidade %d inexistente!\n", modo);
     }
     return 0;
 }

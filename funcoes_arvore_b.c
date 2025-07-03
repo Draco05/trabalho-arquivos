@@ -119,42 +119,86 @@ void arvore_adicionar_chave(int idAttack, long int byteoffset, HEADER_ARVORE *he
     }
 }
 
-void arvore_busca_condicional(FILE *arquivo_bin, FILE *arquivo_indice, REGISTRO reg_modelo, HEADER *header_bin, HEADER_ARVORE *header_indice){
-    // Busca não tem indice como parametro
-    if (reg_modelo.idAttack == -1){
-        busca_condicional(arquivo_bin, reg_modelo, header_bin, IMPRIMIR);
+void operacao_registro(int modo, REGISTRO reg, HEADER *header_bin, FILE *arquivo_bin, FILE *arquivo_indice, int index, int rrn, REGISTRO novo_reg, NO_ARVORE *no){
+    if (modo == IMPRIMIR) print_registro(reg, header_bin);
+    else if (modo == UPDATE){
+        fseek(arquivo_bin, no->byteOffsets[index], SEEK_SET);
+        long int byteoffset = update_registro(arquivo_bin, &reg, &novo_reg, header_bin);
+        if (byteoffset != -1){
+            no->byteOffsets[index] = byteoffset;
+            escrever_no(no, rrn, arquivo_indice);
+        }
+    }
+}
+
+void percorre_comparando(FILE *arquivo_bin, FILE *arquivo_indice, REGISTRO reg_modelo, HEADER *header_bin, HEADER_ARVORE *header_indice, int modo, int rrn, REGISTRO novo_reg, int *encontrou){
+    if (rrn == -1) {
         return;
     }
+    NO_ARVORE *no = ler_no(rrn, arquivo_indice);
+    for (int i = 0; i < no->nroChaves; i++){
+        percorre_comparando(arquivo_bin, arquivo_indice, reg_modelo, header_bin, header_indice, modo, no->ponteirosNos[i], novo_reg, encontrou);
+        fseek(arquivo_bin, no->byteOffsets[i], SEEK_SET);
+        REGISTRO reg = ler_registro(arquivo_bin, header_bin);
+        if (compara_registros(&reg, &reg_modelo)){
+            operacao_registro(modo, reg, header_bin, arquivo_bin, arquivo_indice, i, rrn, novo_reg, no);
+            *encontrou = 1;
+        }
+        desaloca_struct_registro(reg);
+    }
+    percorre_comparando(arquivo_bin, arquivo_indice, reg_modelo, header_bin, header_indice, modo, no->ponteirosNos[no->nroChaves], novo_reg, encontrou);
+    free(no);
+} 
+
+
+void arvore_busca_condicional(FILE *arquivo_bin, FILE *arquivo_indice, REGISTRO reg_modelo, HEADER *header_bin, HEADER_ARVORE *header_indice, int modo){
+    // Busca não tem indice como parametro
+
     NO_ARVORE *no;
+    REGISTRO novo_reg = {0};
     int encontrou = 0;
+
+    if (modo == UPDATE) novo_reg = cria_modelo(CAMPOS);
     int rrn = header_indice->noRaiz;
 
-    while (rrn != -1){
-        no = ler_no(rrn, arquivo_indice);
+    // mudar isso aq pra buscar na arvore
+    if (reg_modelo.idAttack == -1){
+        percorre_comparando(arquivo_bin, arquivo_indice, reg_modelo, header_bin, header_indice, modo, rrn, novo_reg, &encontrou);
+    }
+    else{
+        while (rrn != -1){
+            no = ler_no(rrn, arquivo_indice);
 
-        int index = 0;
-        while (index < no->nroChaves && reg_modelo.idAttack > no->chaves[index]) index++;
+            int index = 0;
+            while (index < no->nroChaves && reg_modelo.idAttack > no->chaves[index]) index++;
 
-        // encontrou o registro com mesmo idAttack
-        if (index < no->nroChaves && no->chaves[index] == reg_modelo.idAttack){
-            int byteoffset = no->byteOffsets[index];
-            fseek(arquivo_bin, byteoffset, SEEK_SET);
-            REGISTRO reg = ler_registro(arquivo_bin, header_bin);
-            if (compara_registros(&reg, &reg_modelo)){
-                print_registro(reg, header_bin);
-                encontrou = 1;
+            // encontrou o registro com mesmo idAttack
+            if (index < no->nroChaves && no->chaves[index] == reg_modelo.idAttack){
+
+                long int byteoffset = no->byteOffsets[index];
+                fseek(arquivo_bin, byteoffset, SEEK_SET);
+                REGISTRO reg = ler_registro(arquivo_bin, header_bin);
+                if (compara_registros(&reg, &reg_modelo)){
+                    operacao_registro(modo, reg, header_bin, arquivo_bin, arquivo_indice, index, rrn,novo_reg, no);
+                    encontrou = 1;
+                }
+                desaloca_struct_registro(reg);
+                free(no);
+                break;
             }
-            desaloca_struct_registro(reg);
+
+            rrn = no->ponteirosNos[index];
             free(no);
-            break;
         }
-
-        rrn = no->ponteirosNos[index];
-        free(no);
     }
-
-    if (!encontrou){
-        printf("Registro inexistente.\n\n");
+    if (modo == IMPRIMIR){
+        if (!encontrou){
+            printf("Registro inexistente.\n\n");
+        }
+        printf("**********\n");
     }
-    printf("**********\n");
+    else if (modo == UPDATE){
+        desaloca_struct_registro(novo_reg);
+    }
+    
 }

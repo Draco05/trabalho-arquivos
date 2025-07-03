@@ -10,7 +10,6 @@
 // funções privadas
 int compara_registros(REGISTRO *reg, REGISTRO *reg_modelo);
 long int posicao_da_insercao(FILE *arquivo, int *tamanho, HEADER *header);
-void update_registro(FILE *arquivo, REGISTRO *reg, REGISTRO *reg_template, HEADER *header);
 
 // Função CREATE TABLE
 // Argumetos: Ponteiro dos arquivos csv e binário
@@ -270,12 +269,12 @@ REGISTRO cria_modelo(int modo){
 
 // Função que insere registro no arquivo de dados
 // Argumentos: Arquivo binário a ser manipulado, registro a ser inserido, header do arquivo
-// Retorno: 0 caso ocorra algum erro, 1 caso esteja tudo certo
-int inserir_registro(FILE *arquivo, REGISTRO *registro, HEADER *header){
+// Retorno: -1 caso ocorra algum erro, posicao da inserção caso esteja tudo certo
+long int inserir_registro(FILE *arquivo, REGISTRO *registro, HEADER *header){
     // checa consistência do arquivo
     if (header->status == '0'){
         printf("Falha no processamento do arquivo.\n"); 
-        return 0;
+        return -1;
     }
     // atualiza o status da struct
     header->status = '0';
@@ -288,7 +287,7 @@ int inserir_registro(FILE *arquivo, REGISTRO *registro, HEADER *header){
     // atualiza a struct header
     header->status = '1';
     header->nroRegArq++;
-    return 1;
+    return posicao;
 }
 
 // Função que compara dois registros
@@ -354,7 +353,7 @@ long int posicao_da_insercao(FILE *arquivo, int *tamanho, HEADER *header){
 
 // Função de atualizar o valor de um registro
 // Argumentos: arquivo binário a ser manipulao, registro original, registro com os valores com update, header
-void update_registro(FILE *arquivo, REGISTRO *reg, REGISTRO *reg_template, HEADER *header){
+long int update_registro(FILE *arquivo, REGISTRO *reg, REGISTRO *reg_template, HEADER *header){
 
     // cria uma struct do registro com os valores atualizados
     REGISTRO reg_novo;
@@ -421,11 +420,12 @@ void update_registro(FILE *arquivo, REGISTRO *reg, REGISTRO *reg_template, HEADE
     if (reg_novo.tamanhoRegistro <= reg->tamanhoRegistro){
         reg_novo.tamanhoRegistro = reg->tamanhoRegistro;
         escreve_registro(arquivo, reg_novo, *header);
+        return -1;
     }
     else{
         // remove registro original e adiciona o novo
         header->status = '1';
         remocao_logica(arquivo, header);
-        inserir_registro(arquivo, &reg_novo, header);
+        return inserir_registro(arquivo, &reg_novo, header);
     } 
 }

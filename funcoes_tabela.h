@@ -4,6 +4,7 @@
     #define IMPRIMIR 0
     #define DELETAR 1
     #define UPDATE 2
+    #define INSERIR 3
     #define CAMPOS 0 
     #define COMPLETO 1
     #include <stdio.h>
@@ -15,7 +16,8 @@
     void print_registro(REGISTRO reg, HEADER *header);
     void busca_simples(FILE *arquivo);
     int busca_condicional(FILE *arquivo, REGISTRO reg_modelo, HEADER *header, int modo);
-    int inserir_registro(FILE *arquivo, REGISTRO *registro, HEADER *header);
+    long int inserir_registro(FILE *arquivo, REGISTRO *registro, HEADER *header);
     REGISTRO cria_modelo(int modo);
+    long int update_registro(FILE *arquivo, REGISTRO *reg, REGISTRO *reg_template, HEADER *header);
 
 #endif
