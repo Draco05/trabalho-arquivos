@@ -1,3 +1,8 @@
+// Grupo 9
+// Caio Draco Araújo Albuquerque Galvão - 15573731
+// Luis Guilherme Zanetti - 15652750
+// Pedro Bizon Dania - 11812667
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

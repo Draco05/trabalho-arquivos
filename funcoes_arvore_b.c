@@ -2,6 +2,7 @@
 #include "funcoes_tabela.h"
 
 NO_ARVORE *criar_no(int tipo){
+    // Aloca espaço para os nós e inicializa os campos de maneira conveniente
     NO_ARVORE *no = malloc(sizeof(NO_ARVORE));
     no->tipoNo = tipo;
     no->nroChaves = 0;
