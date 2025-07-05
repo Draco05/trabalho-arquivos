@@ -1,5 +1,8 @@
 #include "io_arvore.h"
 
+// Le o header do arquivo de indices
+// Argumento: ponteiro do arquivo de indices
+// Retorno: Header do arquivo
 HEADER_ARVORE ler_header_arvore(FILE *arquivo_arvore){
     HEADER_ARVORE header_arvore;
     // Vai para o inicio do arquivo
@@ -17,6 +20,8 @@ HEADER_ARVORE ler_header_arvore(FILE *arquivo_arvore){
     return header_arvore;
 }
 
+// Escreve o header do arquivo de indices no arquivo
+// Argumentos: arquivo de indices e o seu header 
 void escreve_header_arvore(FILE *arquivo_arvore, HEADER_ARVORE *header_arvore){
     // Vai para o inicio do arquivo
     if (ftell(arquivo_arvore) != 0){
@@ -31,6 +36,8 @@ void escreve_header_arvore(FILE *arquivo_arvore, HEADER_ARVORE *header_arvore){
     fwrite(header_arvore->lixo, sizeof(char), 31, arquivo_arvore); //Lixo
 }
 
+// Escreve um nó no arquivo de indices
+// Argumentos: ponteiro para o nó, RRN em que será feito a escrita, arquivo de indices
 void escrever_no(NO_ARVORE *no, int rrn, FILE *arquivo_arvore){
     if (rrn == -1) return; //Posicao invalida
 
@@ -39,15 +46,19 @@ void escrever_no(NO_ARVORE *no, int rrn, FILE *arquivo_arvore){
     fwrite(&(no->tipoNo), sizeof(int), 1, arquivo_arvore); 
     fwrite(&(no->nroChaves), sizeof(int), 1, arquivo_arvore); 
 
+    // Escreve o ponteiro da esquerda, a chave e o byteoffset
     for (int i = 0; i < ORDEM_ARVORE - 1; i++){
         fwrite(&(no->ponteirosNos[i]), sizeof(int), 1, arquivo_arvore);
         fwrite(&(no->chaves[i]), sizeof(int), 1, arquivo_arvore);
         fwrite(&(no->byteOffsets[i]), sizeof(long int), 1, arquivo_arvore);
     }
+    // Escreve o último ponteiro (mais para a direita)
     fwrite(&(no->ponteirosNos[ORDEM_ARVORE - 1]), sizeof(int), 1, arquivo_arvore);
 
 }
-
+// Lê um nó do arquivo de indices
+// Argumentos: RRN do nó, arquivo de indices
+// Retorno: Nó lido
 NO_ARVORE *ler_no(int rrn, FILE *arquivo_arvore){
     if (rrn == -1) return NULL; // Posicao invalida
 
@@ -57,17 +68,19 @@ NO_ARVORE *ler_no(int rrn, FILE *arquivo_arvore){
     fread(&(no->tipoNo), sizeof(int), 1, arquivo_arvore);
     fread(&(no->nroChaves), sizeof(int), 1, arquivo_arvore);
     
+    // Le o ponteiro da esquerda, a chave o byteoffset
     for (int i = 0; i < ORDEM_ARVORE - 1; i++){
         fread(&(no->ponteirosNos[i]), sizeof(int), 1, arquivo_arvore);
         fread(&(no->chaves[i]), sizeof(int), 1, arquivo_arvore);
         fread(&(no->byteOffsets[i]), sizeof(long int), 1, arquivo_arvore);
     }
+    // Le o ultimo ponteiro (mais para a direita)
     fread(&(no->ponteirosNos[ORDEM_ARVORE - 1]), sizeof(int), 1, arquivo_arvore);
     
+    // Inicia os valores "a mais" do nó como -1
     no->ponteirosNos[ORDEM_ARVORE] = -1;
     no->byteOffsets[ORDEM_ARVORE - 1] = -1;
     no->chaves[ORDEM_ARVORE - 1] = -1;
-
 
     return no;
 }

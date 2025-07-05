@@ -199,59 +199,73 @@ int main(){
         fclose(arquivo_binario);
         binarioNaTela(nome_binario);
         break;
+    // Criar arquivo de indices    
     case 7:
+        // Ler arquivos de entrada
         scanf(" %s  %s", nome_binario, nome_indice);
         arquivo_binario = fopen(nome_binario, "rb");
         arquivo_indice = fopen(nome_indice, "wb+");
 
+        // Checa se os arquivos foram abertos corretamente
         if (checar_arquivos(2, arquivo_binario, arquivo_indice)) break;
         
+        // Chama função de criar árvore e checa se foi executada corretamente
         if (criar_arvore(arquivo_binario, arquivo_indice) == 0){
             printf("Falha no processamento do arquivo.\n");
             fclose(arquivo_binario);
             fclose(arquivo_indice);
             break;
         }
+        // Fecha arquivos e faz o binarioNaTela
         fclose(arquivo_binario);
         fclose(arquivo_indice);
         binarioNaTela(nome_indice);
         break;
 
+    // Busca de registros usando o arquivo de indices
     case 8:
+        // Ler arquivos de entrada e número de checagens
         scanf(" %s  %s %d", nome_binario, nome_indice, &n);
         arquivo_binario = fopen(nome_binario, "rb");
         arquivo_indice = fopen(nome_indice, "rb");
 
+        // Checa se os arquivos foram abertos corretamente
         if (checar_arquivos(2, arquivo_binario, arquivo_indice)) break;
 
+        // Lê os headers dos arquivos e checa se os arquivos estão consistentes
         header = ler_header(arquivo_binario);
         header_indice = ler_header_arvore(arquivo_indice);
-
         if (header.status == '0' || header_indice.status == '0'){
             printf("Falha no processamento do arquivo.\n");
             fclose(arquivo_binario);
             fclose(arquivo_csv);
             break;
         }
+        // Loop das buscas
         for (int i = 0; i < n; i++){
+            // Cria um registro com o modelo especificado pelo usuário
             REGISTRO reg_modelo = cria_modelo(CAMPOS);
+            // Busca usando a árvore B usando modo de IMPRIMIR
             arvore_busca_condicional(arquivo_binario, arquivo_indice, reg_modelo, &header, &header_indice, IMPRIMIR);
             desaloca_struct_registro(reg_modelo);
         }
 
+        // Fecha os arquivos
         fclose(arquivo_binario);
         fclose(arquivo_indice);
         break;
     case 10:
-        scanf(" %s  %s %d", nome_binario, nome_indice, &n); // Le o número de inserções
+        // Ler arquivos de entrada e número de inserções
+        scanf(" %s  %s %d", nome_binario, nome_indice, &n);
         arquivo_binario = fopen(nome_binario, "rb+");
         arquivo_indice = fopen(nome_indice, "rb+");
-        // Verifica se o arquivo está correto
+
+        // Checa se os arquivos foram abertos corretamente
         if (checar_arquivos(2, arquivo_binario, arquivo_indice)) break;
 
+        // Lê os headers dos arquivos e checa se os arquivos estão consistentes
         header = ler_header(arquivo_binario);
         header_indice = ler_header_arvore(arquivo_indice);
-
         if (header.status == '0' || header_indice.status == '0'){
             printf("Falha no processamento do arquivo.\n");
             fclose(arquivo_binario);
@@ -259,7 +273,7 @@ int main(){
             break;
         }
 
-        //atualiza o stauts no arquivo, mas mantém como 1 na struct
+        //atualiza o stauts nos arquivos, mas mantém como 1 na struct
         header.status = '0';
         header_indice.status = '0';
         update_header(arquivo_binario, header);
@@ -269,21 +283,26 @@ int main(){
 
         // Loop das inserções
         for (int i = 0; i < n; i++){
+            // Cria modelo especificado pelo usuário
             REGISTRO registro = cria_modelo(COMPLETO);
+            // Insere o registro no arquivo binário
             long int byteoffset = inserir_registro(arquivo_binario, &registro, &header);
             int chave = registro.idAttack;
             // Insere o registro especificado. Caso ocorra erro, termina o programa
             if (byteoffset == -1){
                 fclose(arquivo_binario);
+                fclose(arquivo_indice);
                 desaloca_struct_registro(registro);
                 return 0;
             }
+            // Adiciona o novo idAttack no arquivo de indices
             arvore_adicionar_chave(chave, byteoffset, &header_indice, arquivo_indice);
             desaloca_struct_registro(registro);
         }
-        // atualiza os valores do header no arquivo
+        // atualiza os valores dos headers nos arquivos
         update_header(arquivo_binario, header);
         escreve_header_arvore(arquivo_indice, &header_indice);
+        // Fecha o arquivo o faz o binarioNaTela
         fclose(arquivo_binario);
         fclose(arquivo_indice);
         binarioNaTela(nome_binario);
@@ -291,28 +310,37 @@ int main(){
         break;
 
     case 11:
+        // Ler arquivos de entrada e número de updates
         scanf(" %s  %s %d", nome_binario, nome_indice, &n);
         arquivo_binario = fopen(nome_binario, "rb+");
         arquivo_indice = fopen(nome_indice, "rb+");
-
+        
+        // Checa se os arquivos foram abertos corretamente
         if (checar_arquivos(2, arquivo_binario, arquivo_indice)) break;
 
+        // Lê os headers dos arquivos e checa se os arquivos estão consistentes
         header = ler_header(arquivo_binario);
         header_indice = ler_header_arvore(arquivo_indice);
-
         if (header.status == '0' || header_indice.status == '0'){
             printf("Falha no processamento do arquivo.\n");
             fclose(arquivo_binario);
             fclose(arquivo_csv);
             break;
         }
+
+        // Loop dos updates
         for (int i = 0; i < n; i++){
+            // Cria modelo especificado pelo usuário
             REGISTRO reg_modelo = cria_modelo(CAMPOS);
+            // Busca na árvore usando o modo de UPDATE
             arvore_busca_condicional(arquivo_binario, arquivo_indice, reg_modelo, &header, &header_indice, UPDATE);
             desaloca_struct_registro(reg_modelo);
         }
+
+        // Atualizad os headers nos arquivos
         update_header(arquivo_binario, header);
         escreve_header_arvore(arquivo_indice, &header_indice);
+        // Fecha o arquivo o faz o binarioNaTela
         fclose(arquivo_binario);
         fclose(arquivo_indice);
         binarioNaTela(nome_binario);
